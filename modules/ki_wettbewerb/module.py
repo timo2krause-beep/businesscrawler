@@ -70,6 +70,31 @@ Fokussiere dich auf: Preisänderungen, neue Produkte/Features, strategische Änd
 Ignoriere rein kosmetische Änderungen (Layout, Tippfehler, Datumsänderungen).
 Halte die Zusammenfassung auf 2-4 Sätze."""
 
+RECOMMENDATIONS_SYSTEM_PROMPT = """Du bist ein Business-Berater für kleine und mittlere Unternehmen.
+Du bekommst eine Wettbewerbsanalyse (Profile der Wettbewerber und ggf. aktuelle Änderungen bei ihnen).
+Leite daraus 3-5 KONKRETE, SOFORT UMSETZBARE Handlungsempfehlungen für das analysierte Unternehmen ab.
+
+Anforderungen an jede Empfehlung:
+- Eine klare, direkt umsetzbare Handlung (kein "prüfe, ob..." oder "überlege dir..." – sondern eine echte Handlung)
+- Eine kurze Begründung MIT Bezug auf einen konkreten Wettbewerber aus den Daten
+- Priorität: "hoch", "mittel" oder "niedrig"
+- Kategorie: "Preise", "Marketing", "Produkt" oder "Sonstiges"
+
+Antworte ausschließlich als JSON-Array mit diesem Format:
+[
+  {
+    "action": "Konkrete Handlung in 1-2 Sätzen",
+    "reason": "Begründung mit Bezug auf einen bestimmten Wettbewerber",
+    "priority": "hoch",
+    "category": "Preise"
+  }
+]
+
+Wichtig:
+- Erfinde keine Wettbewerber-Fakten, die dir nicht gegeben wurden
+- Bei zu wenig Datengrundlage lieber weniger, dafür fundierte Empfehlungen
+- Nur JSON ausgeben, kein anderer Text"""
+
 
 class KIWettbewerbMonitor(BaseModule):
     name = "ki_wettbewerb"
@@ -189,6 +214,47 @@ class KIWettbewerbMonitor(BaseModule):
         except Exception as e:
             log.warning("KI-Zusammenfassung fehlgeschlagen: %s", e)
             return diff
+
+    async def _generate_recommendations_ai(
+        self, competitors: list[dict], profiles: list[str], recent_changes: list[str]
+    ) -> list[dict]:
+        """Leitet aus Wettbewerberprofilen + aktuellen Änderungen konkrete Handlungsempfehlungen ab."""
+        lines = [f"Analysiertes Unternehmen: {self.company_name}\n"]
+        for comp, profile in zip(competitors, profiles):
+            lines.append(f"### {comp.get('name', '?')}")
+            lines.append(self._format_competitor_card(comp))
+            if profile:
+                lines.append(profile)
+            lines.append("")
+
+        if recent_changes:
+            lines.append("### Aktuelle Änderungen bei Wettbewerbern")
+            lines.extend(recent_changes)
+
+        try:
+            result = await ai_json("\n".join(lines), system=RECOMMENDATIONS_SYSTEM_PROMPT)
+        except Exception as e:
+            log.warning("Handlungsempfehlungen fehlgeschlagen: %s", e)
+            return []
+
+        if not isinstance(result, list):
+            log.warning("KI hat für Handlungsempfehlungen kein Array zurückgegeben: %s", type(result))
+            return []
+        return result
+
+    def _format_recommendations(self, recommendations: list[dict]) -> str:
+        """Formatiert die Handlungsempfehlungen als übersichtliche Liste."""
+        priority_icons = {"hoch": "🔴", "mittel": "🟡", "niedrig": "🟢"}
+        lines = [f"Konkrete Handlungsempfehlungen für **{self.company_name}**:\n"]
+        for i, rec in enumerate(recommendations, 1):
+            icon = priority_icons.get(str(rec.get("priority", "")).lower(), "⚪")
+            category = rec.get("category", "Sonstiges")
+            lines.append(f"{i}. {icon} **{rec.get('action', '?')}** _({category})_")
+            reason = rec.get("reason", "")
+            if reason:
+                lines.append(f"   {reason}")
+            lines.append("")
+        return "\n".join(lines)
 
     def _format_competitor_card(self, comp: dict) -> str:
         """Formatiert die Rohdaten eines Wettbewerbers als übersichtlichen Text."""
@@ -314,6 +380,23 @@ class KIWettbewerbMonitor(BaseModule):
 
                 results.append(entry)
 
+        # 5. Handlungsempfehlungen aus Wettbewerberprofilen + aktuellen Änderungen ableiten
+        recent_changes = [
+            f"- {r.get('title')}: {r.get('ai_summary')}"
+            for r in results
+            if r.get("event_type") == "competitor_change" and r.get("ai_summary")
+        ]
+        recommendations = await self._generate_recommendations_ai(competitors, profiles, recent_changes)
+        if recommendations:
+            results.insert(0, {
+                "title": f"Handlungsempfehlungen für {self.company_name}",
+                "description": self._format_recommendations(recommendations),
+                "url": "",
+                "event_type": "recommendations",
+                "is_recommendations": True,
+                "recommendations": recommendations,
+            })
+
         return results
 
     def process_data(self, raw_data: list[dict]) -> list[ReportItem]:
@@ -332,16 +415,20 @@ class KIWettbewerbMonitor(BaseModule):
             else:
                 category = "critical"
 
+            is_recommendations = entry.get("is_recommendations", False)
+            keep_full_text = is_overview or is_profile or is_recommendations
+
             items.append(ReportItem(
                 title=entry["title"],
                 category=category,
-                summary=entry["description"] if (is_overview or is_profile) else entry["description"][:2000],
+                summary=entry["description"] if keep_full_text else entry["description"][:2000],
                 source_url=entry.get("url", ""),
                 metadata={
                     "event_type": entry.get("event_type"),
                     "ai_summary": entry.get("ai_summary"),
                     "content_hash": entry.get("content_hash"),
                     "competitor_data": entry.get("competitor_data"),
+                    "recommendations": entry.get("recommendations"),
                 },
             ))
         return items

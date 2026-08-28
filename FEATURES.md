@@ -6,7 +6,7 @@ kein Code, nur zur Übersicht/Nachverfolgung).
 
 ## Produkt-Features
 
-- [ ] **1. Konkrete Handlungsempfehlungen in der KI-Analyse**
+- [x] **1. Konkrete Handlungsempfehlungen in der KI-Analyse**
   Aktuell liefert `ki_wettbewerb` ein Analyse-Profil (`PROFILE_SYSTEM_PROMPT`), aber keine
   explizit umsetzbaren Empfehlungen ("Erhöhe Preise um X %, da Wettbewerber Y das auch tut").
   Neuer, strukturierter Empfehlungs-Block mit konkreter Handlung + Begründung + Datenbezug.
