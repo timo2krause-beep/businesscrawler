@@ -1,4 +1,7 @@
-name: CI/CD
+name: CI
+
+# Deployment läuft über Railways eigene GitHub-Integration (auto-deploy bei
+# Push auf main), nicht über diese Pipeline. Siehe README/Setup-Hinweise.
 
 on:
   push:
@@ -76,25 +79,3 @@ jobs:
 
       - name: Build frontend image
         run: docker build -t scraper-frontend:ci --build-arg NEXT_PUBLIC_API_URL=http://localhost:8000 ./frontend
-
-  deploy:
-    name: Deploy to Railway
-    needs: [docker-build]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy backend
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --service backend --detach
-
-      - name: Deploy frontend
-        working-directory: frontend
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --service frontend --detach

@@ -14,6 +14,7 @@ from api.module_router import router as module_router
 from api.oauth_router import router as oauth_router
 from api.payment_router import router as payment_router
 from api.report_router import router as report_router
+from config.settings import settings
 from core import registry
 from core.database import init_db
 from modules.cve_monitor import CVEMonitor
@@ -38,7 +39,7 @@ app = FastAPI(title="Scraper Platform", version="0.2.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=list({settings.frontend_url, "http://localhost:3000"}),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
