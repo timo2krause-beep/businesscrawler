@@ -36,6 +36,9 @@ playwright = ["playwright>=1.49"]
 [tool.setuptools.packages.find]
 include = ["api*", "auth*", "config*", "core*", "modules*", "payments*"]
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
 [tool.ruff]
 line-length = 100
 
