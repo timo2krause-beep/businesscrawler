@@ -65,6 +65,7 @@ KI-identified competitors cached in `competitor_profiles` table. Only refreshed 
 - **Preference types in frontend**: `pref_type` in `frontend/src/lib/modules.ts` controls UI: undefined=string list, "targets"=url+name+selector editor, "company"=single text input
 - **Schema types for preferences**: `PreferenceSet.value` accepts `dict | list | str | bool` (api/schemas.py)
 - **DB sessions**: Use `get_db()` for FastAPI deps, `get_session()` context manager for standalone code
+- **AI token cap**: `core/ai_usage.py` tracks per-call token usage via a contextvar accumulator, transparent to modules (no changes needed to `ai_chat`/`ai_json` call sites). Wrap a full module run with `with track() as usage: ...` then `save_usage(db, user_id, module_name, usage)` — done in both `api/module_router.py` and `scheduler.py`. Monthly limits per plan live in `payments/stripe_service.py` (`AI_TOKEN_LIMITS`); enforced as a 429 before a module runs.
 
 ## Database
 

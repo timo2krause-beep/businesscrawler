@@ -28,6 +28,8 @@ class UserResponse(BaseModel):
     created_at: datetime
     plan: str | None = None
     modules: list[str] = []
+    ai_tokens_used: int = 0
+    ai_token_limit: int | None = None
 
     model_config = {"from_attributes": True}
 
@@ -103,9 +105,12 @@ class AdminUserResponse(BaseModel):
     status: str | None
     module_count: int
     created_at: datetime
+    ai_tokens_used_month: int = 0
+    ai_token_limit: int | None = None
 
 
 class StatsResponse(BaseModel):
     total_users: int
     active_subscriptions: int
     total_reports: int
+    total_ai_tokens_month: int = 0

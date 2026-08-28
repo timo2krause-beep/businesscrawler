@@ -16,6 +16,15 @@ PLAN_LIMITS = {
     "pro": 99,
 }
 
+# Monatlicher KI-Token-Deckel pro Plan (Summe aus prompt_tokens + completion_tokens
+# über alle Modul-Läufe). Verhindert, dass ein einzelner User die KI-API-Kosten
+# unkontrolliert hochtreibt. None = kein Limit.
+AI_TOKEN_LIMITS: dict[str, int | None] = {
+    "free": 50_000,
+    "basic": 300_000,
+    "pro": 2_000_000,
+}
+
 
 def get_price_id(plan: str) -> str:
     prices = {"basic": settings.stripe_price_basic, "pro": settings.stripe_price_pro}

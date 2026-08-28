@@ -63,6 +63,8 @@ export function getMe() {
     plan: string;
     modules: string[];
     created_at: string;
+    ai_tokens_used: number;
+    ai_token_limit: number | null;
   }>("/me");
 }
 

@@ -6,6 +6,7 @@ import logging
 import httpx
 
 from config.settings import settings
+from core.ai_usage import record_usage
 
 log = logging.getLogger(__name__)
 
@@ -72,6 +73,9 @@ async def _gemini_chat(
         resp.raise_for_status()
 
     data = resp.json()
+    usage = data.get("usageMetadata", {})
+    record_usage(usage.get("promptTokenCount", 0), usage.get("candidatesTokenCount", 0))
+
     candidates = data.get("candidates", [])
     if not candidates:
         raise RuntimeError("Gemini: Keine Antwort erhalten")
@@ -139,6 +143,9 @@ async def _openrouter_chat(
                 resp.raise_for_status()
 
             data = resp.json()
+            usage = data.get("usage", {})
+            record_usage(usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0))
+
             content = data["choices"][0]["message"]["content"]
             if model_name != primary_model:
                 log.info("Fallback-Modell %s verwendet", model_name)

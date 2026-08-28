@@ -6,6 +6,7 @@ import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from core import registry
+from core.ai_usage import get_monthly_tokens, save_usage, track
 from core.database import get_session, init_db
 from core.email import send_report_email
 from core.models import ReportHistory, Subscription, User, UserModule, UserPreference
@@ -19,6 +20,7 @@ from modules.social_media_generator import SocialMediaGenerator
 from modules.social_sentiment import SocialSentimentMonitor
 from modules.tech_stack_monitor import TechStackMonitor
 from modules.wettbewerbs_monitor import WettbewerbsMonitor
+from payments.stripe_service import AI_TOKEN_LIMITS
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -45,6 +47,11 @@ async def generate_user_reports():
                 for p in db.query(UserPreference).filter(UserPreference.user_id == user.id).all()
             }
 
+            token_limit = AI_TOKEN_LIMITS.get(sub.plan)
+            if token_limit is not None and get_monthly_tokens(db, user.id) >= token_limit:
+                log.info("User %s: KI-Token-Limit erreicht, überspringe alle Module diese Woche", user.email)
+                continue
+
             for um in user_modules:
                 try:
                     module = registry.get_module(um.module_name)
@@ -58,7 +65,9 @@ async def generate_user_reports():
                     module = personalized
 
                 try:
-                    report = await module.run(persist=True)
+                    with track() as usage:
+                        report = await module.run(persist=True)
+                    save_usage(db, user.id, um.module_name, usage)
                     md = render_markdown(report)
                     html = render_html(report)
 

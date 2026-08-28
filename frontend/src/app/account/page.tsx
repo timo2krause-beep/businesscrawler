@@ -96,6 +96,8 @@ function AccountContent() {
   // --- Billing ---
   const [currentPlan, setCurrentPlan] = useState("free");
   const [billingLoading, setBillingLoading] = useState<string | null>(null);
+  const [aiTokensUsed, setAiTokensUsed] = useState(0);
+  const [aiTokenLimit, setAiTokenLimit] = useState<number | null>(null);
 
   // --- Shared feedback ---
   const [error, setError] = useState("");
@@ -112,7 +114,11 @@ function AccountContent() {
       .catch(() => {})
       .finally(() => setCompanyLoading(false));
 
-    getMe().then((me) => setCurrentPlan(me.plan));
+    getMe().then((me) => {
+      setCurrentPlan(me.plan);
+      setAiTokensUsed(me.ai_tokens_used);
+      setAiTokenLimit(me.ai_token_limit);
+    });
   }, []);
 
   async function handleSaveCompany() {
@@ -335,8 +341,36 @@ function AccountContent() {
   }
 
   function renderBilling() {
+    const pct = aiTokenLimit ? Math.min(100, Math.round((aiTokensUsed / aiTokenLimit) * 100)) : 0;
+    const nearLimit = pct >= 80;
+
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="space-y-6">
+        {aiTokenLimit !== null && (
+          <div className="rounded-2xl border border-[var(--border)] bg-white p-5 card-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">
+                KI-Nutzung diesen Monat
+              </h3>
+              <span className={`text-[12px] font-semibold ${nearLimit ? "text-red-600" : "text-[var(--text-secondary)]"}`}>
+                {aiTokensUsed.toLocaleString("de-DE")} / {aiTokenLimit.toLocaleString("de-DE")} Tokens
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-[var(--bg-secondary)] overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${nearLimit ? "bg-red-500" : "bg-indigo-500"}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            {nearLimit && (
+              <p className="text-[11px] text-red-600 mt-2">
+                Fast aufgebraucht — bei Erreichen des Limits pausieren KI-Module bis zum nächsten Monat oder Upgrade.
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {PLANS.map((plan) => {
           const isCurrent = plan.id === currentPlan;
           const isUpgrade =
@@ -414,6 +448,7 @@ function AccountContent() {
             </div>
           );
         })}
+        </div>
       </div>
     );
   }

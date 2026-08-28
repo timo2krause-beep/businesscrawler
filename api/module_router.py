@@ -11,11 +11,12 @@ from api.schemas import (
 )
 from auth.dependencies import get_current_user
 from core import registry
+from core.ai_usage import get_monthly_tokens, save_usage, track
 from core.database import get_db
 from core.models import ReportHistory, User, UserModule, UserPreference
 from core.personalization import build_personalized_module
 from core.report_renderer import render_html, render_markdown
-from payments.stripe_service import PLAN_LIMITS
+from payments.stripe_service import AI_TOKEN_LIMITS, PLAN_LIMITS
 
 router = APIRouter(prefix="/modules", tags=["Modules"])
 
@@ -96,6 +97,21 @@ async def run_module(
     if not subscribed:
         raise HTTPException(status_code=403, detail=f"Modul '{name}' nicht abonniert")
 
+    # KI-Token-Deckel: verhindert unkontrollierte KI-API-Kosten pro User
+    plan = user.subscription.plan if user.subscription else "free"
+    token_limit = AI_TOKEN_LIMITS.get(plan)
+    if token_limit is not None:
+        used = get_monthly_tokens(db, user.id)
+        if used >= token_limit:
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    f"KI-Token-Limit für Plan '{plan}' erreicht "
+                    f"({used:,} / {token_limit:,} in diesem Monat). "
+                    "Bitte upgraden oder nächsten Monat erneut versuchen."
+                ),
+            )
+
     try:
         module = registry.get_module(name)
     except KeyError as e:
@@ -107,7 +123,10 @@ async def run_module(
     if personalized:
         module = personalized
 
-    report = await module.run(persist=True)
+    with track() as usage:
+        report = await module.run(persist=True)
+    save_usage(db, user.id, name, usage)
+
     md = render_markdown(report)
     html = render_html(report)
 
