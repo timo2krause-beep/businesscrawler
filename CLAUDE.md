@@ -63,7 +63,7 @@ KI-identified competitors cached in `competitor_profiles` table. Only refreshed 
 - **No global state mutation**: Always create new module instances per request (see module_router.py personalization block)
 - **Graceful source failures**: Each data source can fail independently without blocking others
 - **Preference types in frontend**: `pref_type` in `frontend/src/lib/modules.ts` controls UI: undefined=string list, "targets"=url+name+selector editor, "company"=single text input
-- **Schema types for preferences**: `PreferenceSet.value` accepts `dict | list | str` (api/schemas.py)
+- **Schema types for preferences**: `PreferenceSet.value` accepts `dict | list | str | bool` (api/schemas.py)
 - **DB sessions**: Use `get_db()` for FastAPI deps, `get_session()` context manager for standalone code
 
 ## Database

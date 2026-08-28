@@ -6,6 +6,7 @@ export const MODULE_INFO: Record<
     icon: string;
     color: string;
     visible?: boolean;
+    category?: "marketing" | "tech";
     pref_key?: string;
     pref_label?: string;
     pref_placeholder?: string;
@@ -18,7 +19,8 @@ export const MODULE_INFO: Record<
       "Überwacht GitHub Releases und Framework-Updates. Erkennt neue Versionen, Breaking Changes und Sicherheitslücken.",
     icon: "code",
     color: "blue",
-    visible: false,
+    visible: true,
+    category: "tech",
     pref_key: "watched_repos",
     pref_label: "Überwachte Repositories",
     pref_placeholder: "owner/repo (z.B. vercel/next.js)",
@@ -29,7 +31,8 @@ export const MODULE_INFO: Record<
       "Durchsucht die NVD-Datenbank nach Sicherheitslücken. Filtert nach Severity und relevanten Keywords.",
     icon: "shield",
     color: "purple",
-    visible: false,
+    visible: true,
+    category: "tech",
     pref_key: "cve_keywords",
     pref_label: "Überwachte Keywords",
     pref_placeholder: "Keyword (z.B. react, nginx, openssl)",
@@ -40,7 +43,8 @@ export const MODULE_INFO: Record<
       "Überwacht Tech-Blogs und News-Feeds via RSS/Atom. Sammelt relevante Artikel automatisch.",
     icon: "rss",
     color: "orange",
-    visible: false,
+    visible: true,
+    category: "tech",
     pref_key: "rss_feeds",
     pref_label: "RSS Feeds",
     pref_placeholder: "Feed-URL (z.B. https://blog.example.com/feed)",
@@ -52,6 +56,7 @@ export const MODULE_INFO: Record<
     icon: "chart",
     color: "emerald",
     visible: true,
+    category: "marketing",
     pref_key: "scraping_targets",
     pref_label: "Überwachte Webseiten",
     pref_placeholder: "URL",
@@ -64,6 +69,7 @@ export const MODULE_INFO: Record<
     icon: "brain",
     color: "pink",
     visible: true,
+    category: "marketing",
     pref_type: "competitors",
   },
   social_media_generator: {
@@ -73,6 +79,7 @@ export const MODULE_INFO: Record<
     icon: "chat",
     color: "purple",
     visible: true,
+    category: "marketing",
     pref_type: "company",
   },
   social_sentiment: {
@@ -82,6 +89,7 @@ export const MODULE_INFO: Record<
     icon: "chat",
     color: "cyan",
     visible: true,
+    category: "marketing",
     pref_type: "company",
   },
   review_monitor: {
@@ -91,6 +99,7 @@ export const MODULE_INFO: Record<
     icon: "star",
     color: "amber",
     visible: true,
+    category: "marketing",
     pref_type: "company",
   },
 };
@@ -99,6 +108,11 @@ export const MODULE_INFO: Record<
 export const VISIBLE_MODULES = Object.keys(MODULE_INFO).filter(
   (k) => MODULE_INFO[k].visible !== false
 );
+
+/** Sichtbare Module einer Kategorie, in Einfügereihenfolge. */
+export function getModulesByCategory(category: "marketing" | "tech"): string[] {
+  return VISIBLE_MODULES.filter((k) => (MODULE_INFO[k].category || "marketing") === category);
+}
 
 export function getModuleLabel(name: string): string {
   return MODULE_INFO[name]?.label || name;

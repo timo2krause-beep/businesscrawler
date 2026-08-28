@@ -72,12 +72,12 @@ class ModuleRunResponse(BaseModel):
 
 class PreferenceSet(BaseModel):
     key: str
-    value: dict | list | str
+    value: dict | list | str | bool
 
 
 class PreferenceResponse(BaseModel):
     key: str
-    value: dict | list | str
+    value: dict | list | str | bool
 
     model_config = {"from_attributes": True}
 

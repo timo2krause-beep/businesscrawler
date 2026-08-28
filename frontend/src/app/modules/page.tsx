@@ -19,7 +19,7 @@ import {
   deleteCompetitor,
   Competitor,
 } from "@/lib/api";
-import { MODULE_INFO, VISIBLE_MODULES } from "@/lib/modules";
+import { MODULE_INFO, VISIBLE_MODULES, getModulesByCategory } from "@/lib/modules";
 
 interface ModuleInfo {
   name: string;
@@ -63,6 +63,14 @@ export default function ModulesPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [addingCompetitor, setAddingCompetitor] = useState(false);
 
+  // Generic string-list preferences (watched_repos, cve_keywords)
+  const [listPrefs, setListPrefs] = useState<Record<string, string[]>>({});
+  const [listInput, setListInput] = useState<Record<string, string>>({});
+
+  // RSS Feeds (url + name)
+  const [feeds, setFeeds] = useState<{ url: string; name: string }[]>([]);
+  const [feedInput, setFeedInput] = useState({ url: "", name: "" });
+
   useEffect(() => {
     async function load() {
       const [mods, me, userPrefs] = await Promise.all([
@@ -77,6 +85,10 @@ export default function ModulesPage() {
       for (const p of userPrefs as any[]) {
         if (p.key === "scraping_targets") {
           setTargets(Array.isArray(p.value) ? p.value : []);
+        } else if (p.key === "rss_feeds") {
+          setFeeds(Array.isArray(p.value) ? p.value : []);
+        } else if (Array.isArray(p.value)) {
+          setListPrefs((prev) => ({ ...prev, [p.key]: p.value }));
         }
       }
 
@@ -87,6 +99,8 @@ export default function ModulesPage() {
   }, []);
 
   const visibleModules = allModules.filter((m) => VISIBLE_MODULES.includes(m.name));
+  const marketingModules = visibleModules.filter((m) => getModulesByCategory("marketing").includes(m.name));
+  const techModules = visibleModules.filter((m) => getModulesByCategory("tech").includes(m.name));
 
   async function handleToggle(name: string) {
     setError("");
@@ -142,6 +156,63 @@ export default function ModulesPage() {
     try {
       await setPreference("scraping_targets", targets);
       setSuccess("Webseiten gespeichert");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSavingPref(null);
+    }
+  }
+
+  // --- Generic string lists (watched_repos, cve_keywords) ---
+
+  function handleAddListItem(key: string) {
+    const value = (listInput[key] || "").trim();
+    if (!value) return;
+    setListPrefs((prev) => {
+      const current = prev[key] || [];
+      if (current.includes(value)) return prev;
+      return { ...prev, [key]: [...current, value] };
+    });
+    setListInput((prev) => ({ ...prev, [key]: "" }));
+  }
+
+  function handleRemoveListItem(key: string, value: string) {
+    setListPrefs((prev) => ({ ...prev, [key]: (prev[key] || []).filter((v) => v !== value) }));
+  }
+
+  async function handleSaveList(key: string) {
+    setSavingPref(key);
+    setError("");
+    try {
+      await setPreference(key, listPrefs[key] || []);
+      setSuccess("Gespeichert");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSavingPref(null);
+    }
+  }
+
+  // --- RSS Feeds (rss_monitor) ---
+
+  function handleAddFeed() {
+    const url = feedInput.url.trim();
+    if (!url) return;
+    if (feeds.some((f) => f.url === url)) return;
+    setFeeds([...feeds, { url, name: feedInput.name.trim() || url }]);
+    setFeedInput({ url: "", name: "" });
+  }
+
+  function handleRemoveFeed(url: string) {
+    setFeeds(feeds.filter((f) => f.url !== url));
+  }
+
+  async function handleSaveFeeds() {
+    setSavingPref("rss_feeds");
+    setError("");
+    try {
+      await setPreference("rss_feeds", feeds);
+      setSuccess("RSS-Feeds gespeichert");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -398,37 +469,103 @@ export default function ModulesPage() {
       );
     }
 
+    // RSS-Feed-Editor (rss_monitor): braucht URL + Name statt nur einem String
+    if (info.pref_key === "rss_feeds") {
+      return (
+        <div className="space-y-3">
+          {feeds.length > 0 && (
+            <div className="space-y-1.5">
+              {feeds.map((f) => (
+                <div key={f.url} className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-lg bg-white border border-[var(--border)] card-shadow">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] font-medium text-[var(--text-primary)] truncate">{f.name}</p>
+                    <p className="text-[11px] text-[var(--text-muted)] truncate">{f.url}</p>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveFeed(f.url)}
+                    className="text-[var(--text-muted)] hover:text-red-500 transition-colors text-sm shrink-0"
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={feedInput.url}
+              onChange={(e) => setFeedInput({ ...feedInput, url: e.target.value })}
+              onKeyDown={(e) => e.key === "Enter" && handleAddFeed()}
+              placeholder={info.pref_placeholder}
+              className={inputClass}
+            />
+            <input
+              type="text"
+              value={feedInput.name}
+              onChange={(e) => setFeedInput({ ...feedInput, name: e.target.value })}
+              onKeyDown={(e) => e.key === "Enter" && handleAddFeed()}
+              placeholder="Name"
+              className={inputClass + " max-w-[160px]"}
+            />
+            <button onClick={handleAddFeed} className={btnSecondary + " shrink-0"}>+</button>
+          </div>
+          <button onClick={handleSaveFeeds} disabled={savingPref === "rss_feeds"} className={btnPrimary}>
+            {savingPref === "rss_feeds" ? "..." : "Speichern"}
+          </button>
+        </div>
+      );
+    }
+
+    // Generischer String-Listen-Editor (watched_repos, cve_keywords)
+    if (!info.pref_type && info.pref_key) {
+      const key = info.pref_key;
+      const items = listPrefs[key] || [];
+      return (
+        <div className="space-y-3">
+          {items.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {items.map((item) => (
+                <span
+                  key={item}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[var(--border)] text-[12px] font-medium text-[var(--text-primary)] card-shadow"
+                >
+                  {item}
+                  <button
+                    onClick={() => handleRemoveListItem(key, item)}
+                    className="text-[var(--text-muted)] hover:text-red-500 transition-colors"
+                  >
+                    &times;
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={listInput[key] || ""}
+              onChange={(e) => setListInput((prev) => ({ ...prev, [key]: e.target.value }))}
+              onKeyDown={(e) => e.key === "Enter" && handleAddListItem(key)}
+              placeholder={info.pref_placeholder}
+              className={inputClass}
+            />
+            <button onClick={() => handleAddListItem(key)} className={btnSecondary + " shrink-0"}>+</button>
+          </div>
+          <button onClick={() => handleSaveList(key)} disabled={savingPref === key} className={btnPrimary}>
+            {savingPref === key ? "..." : "Speichern"}
+          </button>
+        </div>
+      );
+    }
+
     return null;
   }
 
-  return (
-    <DashboardShell>
-      <div className="mb-8">
-        <h1 className="text-xl font-bold text-[var(--text-primary)]">Module</h1>
-        <p className="text-[13px] text-[var(--text-muted)] mt-1">
-          Marketing-Module zur Wettbewerbs- und Reputationsanalyse
-        </p>
-      </div>
-
-      {error && (
-        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-[12px] px-4 py-3 rounded-xl mb-4">
-          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
-          </svg>
-          {error}
-        </div>
-      )}
-      {success && (
-        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[12px] px-4 py-3 rounded-xl mb-4">
-          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-          </svg>
-          {success}
-        </div>
-      )}
-
+  function renderModuleList(mods: ModuleInfo[]) {
+    return (
       <div className="space-y-3">
-        {visibleModules.map((mod) => {
+        {mods.map((mod) => {
           const active = userModules.includes(mod.name);
           const isExpanded = expanded === mod.name;
           const settings = renderSettings(mod.name);
@@ -494,6 +631,48 @@ export default function ModulesPage() {
           );
         })}
       </div>
+    );
+  }
+
+  return (
+    <DashboardShell>
+      <div className="mb-8">
+        <h1 className="text-xl font-bold text-[var(--text-primary)]">Module</h1>
+        <p className="text-[13px] text-[var(--text-muted)] mt-1">
+          Marketing-Module zur Wettbewerbs- und Reputationsanalyse
+        </p>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-[12px] px-4 py-3 rounded-xl mb-4">
+          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+          </svg>
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[12px] px-4 py-3 rounded-xl mb-4">
+          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+          </svg>
+          {success}
+        </div>
+      )}
+
+      {renderModuleList(marketingModules)}
+
+      {techModules.length > 0 && (
+        <div className="mt-12">
+          <div className="mb-4 pt-6 border-t border-[var(--border)]">
+            <h2 className="text-[15px] font-bold text-[var(--text-primary)]">Tech-Module</h2>
+            <p className="text-[12px] text-[var(--text-muted)] mt-1">
+              Zusätzliche Monitore für Entwicklungsteams: Releases, Sicherheitslücken und News-Feeds
+            </p>
+          </div>
+          {renderModuleList(techModules)}
+        </div>
+      )}
     </DashboardShell>
   );
 }
