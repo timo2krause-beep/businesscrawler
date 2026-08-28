@@ -8,8 +8,7 @@ const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: "home" },
   { href: "/modules", label: "Module", icon: "grid" },
   { href: "/reports", label: "Reports", icon: "file" },
-  { href: "/settings", label: "Einstellungen", icon: "settings" },
-  { href: "/billing", label: "Billing", icon: "card" },
+  { href: "/account", label: "Account", icon: "settings" },
 ];
 
 function Icon({ name, className = "w-[18px] h-[18px]" }: { name: string; className?: string }) {

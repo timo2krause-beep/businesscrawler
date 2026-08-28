@@ -463,7 +463,7 @@ export default function ModulesPage() {
           </svg>
           <p className="text-[12px] text-[var(--text-secondary)]">
             Nutzt den globalen Firmennamen aus{" "}
-            <a href="/settings" className="text-indigo-600 font-semibold hover:underline">Einstellungen</a>.
+            <a href="/account" className="text-indigo-600 font-semibold hover:underline">Account</a>.
           </p>
         </div>
       );
