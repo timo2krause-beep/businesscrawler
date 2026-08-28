@@ -1,0 +1,1 @@
+from modules.social_sentiment.module import SocialSentimentMonitor

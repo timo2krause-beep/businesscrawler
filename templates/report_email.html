@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 680px; margin: 0 auto; padding: 20px; color: #1a1a1a; background: #f5f5f5; }
+  .container { background: #fff; border-radius: 8px; padding: 32px; }
+  h1 { color: #111; font-size: 22px; border-bottom: 2px solid #e5e5e5; padding-bottom: 12px; }
+  h2 { font-size: 16px; margin-top: 28px; }
+  .critical { border-left: 4px solid #dc2626; padding-left: 12px; margin: 16px 0; }
+  .important { border-left: 4px solid #f59e0b; padding-left: 12px; margin: 16px 0; }
+  .info { border-left: 4px solid #3b82f6; padding-left: 12px; margin: 16px 0; }
+  .item-title { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+  .item-summary { color: #444; font-size: 14px; line-height: 1.5; }
+  .item-link { font-size: 13px; color: #2563eb; text-decoration: none; }
+  blockquote { color: #666; font-size: 13px; border-left: 2px solid #ddd; padding-left: 10px; margin: 8px 0; }
+  .footer { margin-top: 32px; font-size: 12px; color: #999; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>{{ report.title }}</h1>
+  <p style="color:#666;font-size:13px;">Generiert: {{ report.generated_at.strftime('%d.%m.%Y %H:%M') }}</p>
+
+  {% if report.critical_items %}
+  <h2>&#x1F6A8; Kritisch</h2>
+  {% for item in report.critical_items %}
+  <div class="critical">
+    <div class="item-title">{{ item.title }}</div>
+    <div class="item-summary">{{ item.summary }}</div>
+    {% if item.source_url %}<a class="item-link" href="{{ item.source_url }}">→ Details</a>{% endif %}
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  {% if report.important_items %}
+  <h2>&#x26A0;&#xFE0F; Wichtig</h2>
+  {% for item in report.important_items %}
+  <div class="important">
+    <div class="item-title">{{ item.title }}</div>
+    <div class="item-summary">{{ item.summary }}</div>
+    {% if item.source_url %}<a class="item-link" href="{{ item.source_url }}">→ Details</a>{% endif %}
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  {% if report.info_items %}
+  <h2>&#x2139;&#xFE0F; Info</h2>
+  {% for item in report.info_items %}
+  <div class="info">
+    <div class="item-title">{{ item.title }}</div>
+    <div class="item-summary">{{ item.summary }}</div>
+    {% if item.source_url %}<a class="item-link" href="{{ item.source_url }}">→ Details</a>{% endif %}
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  {% if not report.items %}
+  <p style="color:#666;">Keine neuen Ereignisse in dieser Periode.</p>
+  {% endif %}
+</div>
+<div class="footer">Scraper Platform – automatisch generiert</div>
+</body>
+</html>

@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scraper-platform"
+version = "0.2.0"
+description = "Modulare SaaS-Plattform für automatisierte Daten-Reports"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.34.0",
+    "sqlalchemy>=2.0",
+    "psycopg2-binary>=2.9",
+    "alembic>=1.14",
+    "httpx>=0.28",
+    "beautifulsoup4>=4.12",
+    "jinja2>=3.1",
+    "python-dotenv>=1.0",
+    "apscheduler>=3.10",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "pydantic[email]>=2.0",
+    "bcrypt>=4.0",
+    "PyJWT>=2.8",
+    "stripe>=8.0",
+    "feedparser>=6.0",
+    "cryptography>=42.0",
+    "python-multipart>=0.0.18",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "ruff>=0.8"]
+playwright = ["playwright>=1.49"]
+
+[tool.setuptools.packages.find]
+include = ["api*", "auth*", "config*", "core*", "modules*", "payments*"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+# SQLAlchemy-Filterausdrücke brauchen "== True", "is True" funktioniert hier nicht.
+"core/competitor_store.py" = ["E712"]
+"api/company_router.py" = ["E712"]

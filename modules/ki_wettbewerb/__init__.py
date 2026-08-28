@@ -1,0 +1,1 @@
+from modules.ki_wettbewerb.module import KIWettbewerbMonitor

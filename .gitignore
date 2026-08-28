@@ -1,0 +1,22 @@
+__pycache__/
+*.pyc
+.env
+.env.local
+.env*.local
+*.egg-info/
+dist/
+build/
+.venv/
+.ruff_cache/
+.pytest_cache/
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# OS
+.DS_Store
+
+# Claude Code (lokal, maschinenspezifisch)
+.claude/settings.local.json
