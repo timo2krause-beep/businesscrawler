@@ -39,6 +39,12 @@ def build_personalized_module(name: str, prefs: dict) -> BaseModule | None:
             company_size=prefs.get("company_size", ""),
         )
 
+    if name == "social_media_generator" and ("company_name" in prefs or "ki_company_name" in prefs):
+        from modules.social_media_generator import SocialMediaGenerator
+        return SocialMediaGenerator(
+            company_name=prefs.get("company_name") or prefs.get("ki_company_name", "")
+        )
+
     if name == "social_sentiment" and ("company_name" in prefs or "sentiment_company" in prefs):
         from modules.social_sentiment import SocialSentimentMonitor
         return SocialSentimentMonitor(

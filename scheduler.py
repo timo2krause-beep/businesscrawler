@@ -15,6 +15,7 @@ from modules.cve_monitor import CVEMonitor
 from modules.ki_wettbewerb import KIWettbewerbMonitor
 from modules.review_monitor import ReviewMonitor
 from modules.rss_monitor import RSSMonitor
+from modules.social_media_generator import SocialMediaGenerator
 from modules.social_sentiment import SocialSentimentMonitor
 from modules.tech_stack_monitor import TechStackMonitor
 from modules.wettbewerbs_monitor import WettbewerbsMonitor
@@ -88,6 +89,7 @@ def main():
     registry.register(RSSMonitor())
     registry.register(WettbewerbsMonitor())
     registry.register(KIWettbewerbMonitor())
+    registry.register(SocialMediaGenerator())
     registry.register(SocialSentimentMonitor())
     registry.register(ReviewMonitor())
 

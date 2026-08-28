@@ -31,7 +31,11 @@ Every module inherits `BaseModule` (core/base_module.py) and implements the pipe
 
 Modules are registered in `app.py` via `registry.register()` and discovered by the API via `core/registry.py`.
 
-**Current modules (7):** tech_stack_monitor, cve_monitor, rss_monitor, wettbewerbs_monitor, ki_wettbewerb, social_sentiment, review_monitor
+**Current modules (8):** tech_stack_monitor, cve_monitor, rss_monitor, wettbewerbs_monitor, ki_wettbewerb, social_media_generator, social_sentiment, review_monitor
+
+`social_media_generator` has no data source of its own — it reads the `competitor_profiles` cache
+that `ki_wettbewerb` populates (via `core/competitor_store.py`) and turns it into ready-to-post
+social media templates. Run `ki_wettbewerb` at least once first.
 
 ### Source System (`BaseSource` → `core/sources/`)
 Data ingestion sources that return `list[NormalizedEvent]`. Used by modules internally.

@@ -88,3 +88,25 @@ def trigger_refresh_all(db: Session) -> int:
     )
     log.info("Refresh für alle Profile getriggert (%d)", count)
     return count
+
+
+def format_competitor_card(comp: dict) -> str:
+    """Formatiert die Rohdaten eines Wettbewerbers als übersichtlichen Text (für KI-Prompts und Reports)."""
+    lines = [
+        f"**{comp.get('name', '?')}** — {comp.get('reason', '')}",
+        f"  URL: {comp.get('url', '')}",
+        f"  Gründung: {comp.get('founded', '?')} | Hauptsitz: {comp.get('hq', '?')}",
+        f"  Größe: {comp.get('size', '?')} | Umsatz: {comp.get('revenue', '?')}",
+        f"  Marktposition: {comp.get('market_share', '?')}",
+        f"  Zielgruppe: {comp.get('target_customers', '?')} | Preismodell: {comp.get('pricing_model', '?')}",
+    ]
+    products = comp.get("products", [])
+    if products:
+        lines.append(f"  Produkte: {', '.join(products)}")
+    strengths = comp.get("strengths", [])
+    if strengths:
+        lines.append(f"  Stärken: {', '.join(strengths)}")
+    weaknesses = comp.get("weaknesses", [])
+    if weaknesses:
+        lines.append(f"  Schwächen: {', '.join(weaknesses)}")
+    return "\n".join(lines)

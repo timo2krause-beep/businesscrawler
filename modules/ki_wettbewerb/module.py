@@ -10,7 +10,12 @@ import logging
 
 from core.ai_service import ai_chat, ai_json
 from core.base_module import BaseModule, Report, ReportItem
-from core.competitor_store import load_competitors, needs_refresh, save_competitor
+from core.competitor_store import (
+    format_competitor_card,
+    load_competitors,
+    needs_refresh,
+    save_competitor,
+)
 from core.database import get_session
 from core.event_store import load_content_hashes, load_content_texts, save_content_hash
 from core.sources.web_scraper import ScrapingTarget, WebScraperSource
@@ -94,34 +99,6 @@ Wichtig:
 - Erfinde keine Wettbewerber-Fakten, die dir nicht gegeben wurden
 - Bei zu wenig Datengrundlage lieber weniger, dafür fundierte Empfehlungen
 - Nur JSON ausgeben, kein anderer Text"""
-
-SOCIAL_POSTS_SYSTEM_PROMPT = """Du bist ein Social-Media-Texter für kleine und mittlere Unternehmen.
-Du bekommst eine Wettbewerbsanalyse (Wettbewerberprofile und daraus abgeleitete Handlungsempfehlungen).
-Erstelle 5 SOFORT NUTZBARE Social-Media-Post-Vorlagen (primär für Instagram/Facebook), mit denen sich
-das analysierte Unternehmen gezielt von den Wettbewerbern abheben kann.
-
-Anforderungen an jeden Post:
-- Fertiger Copy-Text auf Deutsch, direkt postbar (keine Platzhalter wie "[hier einfügen]")
-- Bezug zu einer konkreten Stärke des Unternehmens gegenüber einem bestimmten Wettbewerber ODER
-  zu einer der Handlungsempfehlungen
-- 3-5 passende Hashtags
-- Ein konkreter Vorschlag für das Bild-/Videomotiv
-
-Antworte ausschließlich als JSON-Array mit diesem Format:
-[
-  {
-    "caption": "Fertiger Post-Text inkl. Call-to-Action",
-    "hashtags": ["#Hashtag1", "#Hashtag2"],
-    "image_idea": "Konkreter Vorschlag für Bild oder Video",
-    "based_on": "Kurzer Hinweis, worauf sich der Post bezieht (z.B. Wettbewerber oder Empfehlung)"
-  }
-]
-
-Wichtig:
-- Erfinde keine Fakten über das Unternehmen, die dir nicht gegeben wurden
-- Schreibe im Ton eines echten kleinen Unternehmens, nicht wie ein Großkonzern
-- Nur JSON ausgeben, kein anderer Text"""
-
 
 class KIWettbewerbMonitor(BaseModule):
     name = "ki_wettbewerb"
@@ -249,7 +226,7 @@ class KIWettbewerbMonitor(BaseModule):
         lines = [f"Analysiertes Unternehmen: {self.company_name}\n"]
         for comp, profile in zip(competitors, profiles):
             lines.append(f"### {comp.get('name', '?')}")
-            lines.append(self._format_competitor_card(comp))
+            lines.append(format_competitor_card(comp))
             if profile:
                 lines.append(profile)
             lines.append("")
@@ -283,77 +260,6 @@ class KIWettbewerbMonitor(BaseModule):
             lines.append("")
         return "\n".join(lines)
 
-    async def _generate_social_posts_ai(
-        self, competitors: list[dict], profiles: list[str], recommendations: list[dict]
-    ) -> list[dict]:
-        """Erstellt fertige Social-Media-Post-Vorlagen basierend auf Wettbewerbsdaten + Empfehlungen."""
-        lines = [f"Analysiertes Unternehmen: {self.company_name}\n"]
-        for comp, profile in zip(competitors, profiles):
-            lines.append(f"### {comp.get('name', '?')}")
-            lines.append(self._format_competitor_card(comp))
-            if profile:
-                lines.append(profile)
-            lines.append("")
-
-        if recommendations:
-            lines.append("### Handlungsempfehlungen")
-            for rec in recommendations:
-                lines.append(f"- {rec.get('action', '')} ({rec.get('reason', '')})")
-
-        try:
-            result = await ai_json("\n".join(lines), system=SOCIAL_POSTS_SYSTEM_PROMPT)
-        except Exception as e:
-            log.warning("Social-Media-Vorlagen fehlgeschlagen: %s", e)
-            return []
-
-        if not isinstance(result, list):
-            log.warning("KI hat für Social-Media-Vorlagen kein Array zurückgegeben: %s", type(result))
-            return []
-        return result
-
-    def _format_social_posts(self, posts: list[dict]) -> str:
-        """Formatiert die Social-Media-Vorlagen als copy-paste-fertige Liste."""
-        lines = [f"Fertige Social-Media-Post-Vorlagen für **{self.company_name}** — direkt kopierbar:\n"]
-        for i, post in enumerate(posts, 1):
-            based_on = post.get("based_on", "")
-            heading = f"### Post {i}"
-            if based_on:
-                heading += f" _(Bezug: {based_on})_"
-            lines.append(heading)
-            lines.append("```")
-            lines.append(post.get("caption", ""))
-            hashtags = post.get("hashtags", [])
-            if hashtags:
-                lines.append("")
-                lines.append(" ".join(hashtags))
-            lines.append("```")
-            image_idea = post.get("image_idea", "")
-            if image_idea:
-                lines.append(f"📷 Bildidee: {image_idea}")
-            lines.append("")
-        return "\n".join(lines)
-
-    def _format_competitor_card(self, comp: dict) -> str:
-        """Formatiert die Rohdaten eines Wettbewerbers als übersichtlichen Text."""
-        lines = [
-            f"**{comp.get('name', '?')}** — {comp.get('reason', '')}",
-            f"  URL: {comp.get('url', '')}",
-            f"  Gründung: {comp.get('founded', '?')} | Hauptsitz: {comp.get('hq', '?')}",
-            f"  Größe: {comp.get('size', '?')} | Umsatz: {comp.get('revenue', '?')}",
-            f"  Marktposition: {comp.get('market_share', '?')}",
-            f"  Zielgruppe: {comp.get('target_customers', '?')} | Preismodell: {comp.get('pricing_model', '?')}",
-        ]
-        products = comp.get("products", [])
-        if products:
-            lines.append(f"  Produkte: {', '.join(products)}")
-        strengths = comp.get("strengths", [])
-        if strengths:
-            lines.append(f"  Stärken: {', '.join(strengths)}")
-        weaknesses = comp.get("weaknesses", [])
-        if weaknesses:
-            lines.append(f"  Schwächen: {', '.join(weaknesses)}")
-        return "\n".join(lines)
-
     async def fetch_data(self) -> list[dict]:
         if not self.company_name:
             return [{
@@ -382,7 +288,7 @@ class KIWettbewerbMonitor(BaseModule):
         # 2. Marktübersicht
         overview_lines = [f"Wettbewerbsanalyse für **{self.company_name}** — {len(competitors)} Wettbewerber:\n"]
         for comp in competitors:
-            overview_lines.append(self._format_competitor_card(comp))
+            overview_lines.append(format_competitor_card(comp))
             overview_lines.append("")
         results.append({
             "title": f"Marktübersicht: {self.company_name}",
@@ -474,18 +380,6 @@ class KIWettbewerbMonitor(BaseModule):
                 "recommendations": recommendations,
             })
 
-        # 6. Fertige Social-Media-Post-Vorlagen als direkt nutzbares Folgeprodukt
-        social_posts = await self._generate_social_posts_ai(competitors, profiles, recommendations)
-        if social_posts:
-            results.append({
-                "title": f"Social-Media-Vorlagen für {self.company_name}",
-                "description": self._format_social_posts(social_posts),
-                "url": "",
-                "event_type": "social_posts",
-                "is_social_posts": True,
-                "social_posts": social_posts,
-            })
-
         return results
 
     def process_data(self, raw_data: list[dict]) -> list[ReportItem]:
@@ -497,16 +391,15 @@ class KIWettbewerbMonitor(BaseModule):
             is_profile = entry.get("is_profile", False)
             is_info = entry.get("is_info", False)
             is_recommendations = entry.get("is_recommendations", False)
-            is_social_posts = entry.get("is_social_posts", False)
 
-            if is_overview or is_social_posts:
+            if is_overview:
                 category = "important"
             elif is_profile or is_error or is_baseline or is_info:
                 category = "info"
             else:
                 category = "critical"
 
-            keep_full_text = is_overview or is_profile or is_recommendations or is_social_posts
+            keep_full_text = is_overview or is_profile or is_recommendations
 
             items.append(ReportItem(
                 title=entry["title"],
@@ -519,7 +412,6 @@ class KIWettbewerbMonitor(BaseModule):
                     "content_hash": entry.get("content_hash"),
                     "competitor_data": entry.get("competitor_data"),
                     "recommendations": entry.get("recommendations"),
-                    "social_posts": entry.get("social_posts"),
                 },
             ))
         return items

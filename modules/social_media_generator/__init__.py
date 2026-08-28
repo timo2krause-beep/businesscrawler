@@ -1,0 +1,1 @@
+from modules.social_media_generator.module import SocialMediaGenerator

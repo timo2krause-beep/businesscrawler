@@ -66,6 +66,15 @@ export const MODULE_INFO: Record<
     visible: true,
     pref_type: "competitors",
   },
+  social_media_generator: {
+    label: "Social-Media-Vorlagen",
+    description:
+      "Erstellt fertige, sofort postbare Instagram/Facebook-Vorlagen aus deiner Wettbewerbsanalyse – inkl. Hashtags und Bildidee.",
+    icon: "chat",
+    color: "purple",
+    visible: true,
+    pref_type: "company",
+  },
   social_sentiment: {
     label: "Social Sentiment",
     description:

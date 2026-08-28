@@ -13,8 +13,12 @@ kein Code, nur zur Übersicht/Nachverfolgung).
   *Bezug: Schritt 1 – von Nico direkt als erste Aufgabe für Timo benannt.*
 
 - [x] **2. Social-Media-Post-Generator (Folgeprodukt)**
-  Aus den Konkurrenzdaten automatisch 5–10 fertige Social-Media-Post-Vorlagen generieren
-  (Text + Vorschlag für Bildmotiv), direkt kopierbar/downloadbar.
+  Aus den Konkurrenzdaten automatisch 5 fertige Social-Media-Post-Vorlagen generieren
+  (Text + Hashtags + Vorschlag für Bildmotiv), direkt kopierbar.
+  Bewusst als **eigenes Modul** (`modules/social_media_generator/`) statt Teil von `ki_wettbewerb`
+  umgesetzt, weil Nico es selbst als eigenständig verkaufbares Add-on skizziert hat (200 €/Monat,
+  wöchentlich) – als eigenes Modul unabhängig abonnierbar/bepreisbar, liest aber die schon
+  gecachten Wettbewerberdaten aus `core/competitor_store.py`, kein eigenes Scraping nötig.
   *Bezug: Schritt 1 – "Folgeprodukt ohne Arbeit für den Kunden".*
 
 - [ ] **3. PDF-Export für Reports**
