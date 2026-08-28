@@ -7,6 +7,7 @@ import DashboardShell from "@/components/DashboardShell";
 import ReportCard from "@/components/ReportCard";
 import { getReports, getReport } from "@/lib/api";
 import { getModuleLabel } from "@/lib/modules";
+import { stripMarkdownPreview } from "@/lib/text";
 
 interface Report {
   id: number;
@@ -418,7 +419,7 @@ function ReportsContent() {
                   id={r.id}
                   module={r.module}
                   created_at={r.created_at}
-                  preview={r.content_md.slice(0, 150)}
+                  preview={stripMarkdownPreview(r.content_md, 150)}
                 />
               ))}
             </div>

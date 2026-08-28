@@ -10,7 +10,7 @@ const PLANS = [
     name: "Free",
     price: "0",
     color: "from-slate-500 to-slate-600",
-    features: ["Plattform-Zugang", "Keine Module"],
+    features: ["Plattform-Zugang", "1 Modul (manuell ausführen)"],
   },
   {
     id: "basic",

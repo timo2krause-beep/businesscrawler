@@ -111,7 +111,7 @@ body {
 .prose-report a { color: var(--accent); text-decoration: underline; }
 .prose-report blockquote { border-left: 3px solid var(--border); padding-left: 1rem; margin: 0.75rem 0; color: var(--text-muted); font-style: italic; }
 .prose-report hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
-.prose-report pre { background: var(--bg-secondary); padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1rem; border: 1px solid var(--border); }
+.prose-report pre { background: var(--bg-secondary); padding: 1rem; border-radius: 0.5rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; margin-bottom: 1rem; border: 1px solid var(--border); }
 .prose-report code { font-size: 0.875rem; color: var(--accent); }
 .prose-report table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
 .prose-report th, .prose-report td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); text-align: left; }

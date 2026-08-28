@@ -5,6 +5,7 @@ import DashboardShell from "@/components/DashboardShell";
 import ReportCard from "@/components/ReportCard";
 import { getMe, getReports } from "@/lib/api";
 import { getModuleLabel, MODULE_INFO } from "@/lib/modules";
+import { stripMarkdownPreview } from "@/lib/text";
 
 interface User {
   id: number;
@@ -193,7 +194,7 @@ export default function DashboardPage() {
                 id={r.id}
                 module={r.module}
                 created_at={r.created_at}
-                preview={r.content_md.slice(0, 120)}
+                preview={stripMarkdownPreview(r.content_md, 120)}
               />
             ))}
           </div>
