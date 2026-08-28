@@ -11,6 +11,7 @@ from core.database import get_session, init_db
 from core.email import send_report_email
 from core.models import ReportHistory, Subscription, User, UserModule, UserPreference
 from core.personalization import build_personalized_module
+from core.plan_config import get_ai_token_limit
 from core.report_renderer import render_html, render_markdown
 from modules.cve_monitor import CVEMonitor
 from modules.ki_wettbewerb import KIWettbewerbMonitor
@@ -20,7 +21,6 @@ from modules.social_media_generator import SocialMediaGenerator
 from modules.social_sentiment import SocialSentimentMonitor
 from modules.tech_stack_monitor import TechStackMonitor
 from modules.wettbewerbs_monitor import WettbewerbsMonitor
-from payments.stripe_service import AI_TOKEN_LIMITS
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ async def generate_user_reports():
                 for p in db.query(UserPreference).filter(UserPreference.user_id == user.id).all()
             }
 
-            token_limit = AI_TOKEN_LIMITS.get(sub.plan)
+            token_limit = get_ai_token_limit(db, sub.plan)
             if token_limit is not None and get_monthly_tokens(db, user.id) >= token_limit:
                 log.info("User %s: KI-Token-Limit erreicht, überspringe alle Module diese Woche", user.email)
                 continue

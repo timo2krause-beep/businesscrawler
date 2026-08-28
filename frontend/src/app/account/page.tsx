@@ -509,7 +509,8 @@ function AccountContent() {
         </div>
       )}
 
-      {tab === "unternehmen" ? renderUnternehmen() : renderBilling()}
+      {tab === "unternehmen" && renderUnternehmen()}
+      {tab === "billing" && renderBilling()}
     </DashboardShell>
   );
 }

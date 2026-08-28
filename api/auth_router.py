@@ -14,7 +14,7 @@ from auth.security import create_access_token, hash_password, verify_password
 from core.ai_usage import get_monthly_tokens
 from core.database import get_db
 from core.models import Subscription, User
-from payments.stripe_service import AI_TOKEN_LIMITS
+from core.plan_config import get_ai_token_limit
 
 router = APIRouter(tags=["Auth"])
 
@@ -63,5 +63,5 @@ def get_profile(user: User = Depends(get_current_user), db: Session = Depends(ge
         plan=plan,
         modules=[m.module_name for m in user.modules],
         ai_tokens_used=get_monthly_tokens(db, user.id),
-        ai_token_limit=AI_TOKEN_LIMITS.get(plan),
+        ai_token_limit=get_ai_token_limit(db, plan),
     )

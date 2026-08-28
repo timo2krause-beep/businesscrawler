@@ -15,8 +15,8 @@ from core.ai_usage import get_monthly_tokens, save_usage, track
 from core.database import get_db
 from core.models import ReportHistory, User, UserModule, UserPreference
 from core.personalization import build_personalized_module
+from core.plan_config import get_ai_token_limit, get_module_limit
 from core.report_renderer import render_html, render_markdown
-from payments.stripe_service import AI_TOKEN_LIMITS, PLAN_LIMITS
 
 router = APIRouter(prefix="/modules", tags=["Modules"])
 
@@ -44,7 +44,7 @@ def subscribe_to_module(
         raise HTTPException(status_code=404, detail=f"Modul '{req.module_name}' nicht gefunden")
 
     plan = user.subscription.plan if user.subscription else "free"
-    limit = PLAN_LIMITS.get(plan, 0)
+    limit = get_module_limit(db, plan)
     current_count = len(user.modules)
 
     if current_count >= limit:
@@ -99,7 +99,7 @@ async def run_module(
 
     # KI-Token-Deckel: verhindert unkontrollierte KI-API-Kosten pro User
     plan = user.subscription.plan if user.subscription else "free"
-    token_limit = AI_TOKEN_LIMITS.get(plan)
+    token_limit = get_ai_token_limit(db, plan)
     if token_limit is not None:
         used = get_monthly_tokens(db, user.id)
         if used >= token_limit:

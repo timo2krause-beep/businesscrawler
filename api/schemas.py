@@ -114,3 +114,8 @@ class StatsResponse(BaseModel):
     active_subscriptions: int
     total_reports: int
     total_ai_tokens_month: int = 0
+
+
+class PlanConfigItem(BaseModel):
+    module_limit: int
+    ai_token_limit: int | None

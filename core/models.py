@@ -157,6 +157,17 @@ class CompetitorProfile(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
+class PlanConfig(Base):
+    """Admin-editierbare Limits pro Plan. Fehlt eine Zeile, gelten die Code-Defaults
+    aus core/plan_config.py."""
+    __tablename__ = "plan_config"
+
+    plan: Mapped[str] = mapped_column(String(50), primary_key=True)  # free | basic | pro
+    module_limit: Mapped[int] = mapped_column(Integer)
+    ai_token_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
 class AIUsageLog(Base):
     """Ein Eintrag pro Modul-Lauf mit KI-Aufrufen – Basis für den monatlichen Token-Deckel."""
     __tablename__ = "ai_usage_log"

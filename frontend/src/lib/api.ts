@@ -68,6 +68,51 @@ export function getMe() {
   }>("/me");
 }
 
+// --- Admin ---
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  is_admin: boolean;
+  plan: string | null;
+  status: string | null;
+  module_count: number;
+  created_at: string;
+  ai_tokens_used_month: number;
+  ai_token_limit: number | null;
+}
+
+export interface AdminStats {
+  total_users: number;
+  active_subscriptions: number;
+  total_reports: number;
+  total_ai_tokens_month: number;
+}
+
+export function getAdminUsers() {
+  return request<AdminUser[]>("/admin/users");
+}
+
+export function getAdminStats() {
+  return request<AdminStats>("/admin/stats");
+}
+
+export interface PlanConfigItem {
+  module_limit: number;
+  ai_token_limit: number | null;
+}
+
+export function getPlanConfig() {
+  return request<Record<string, PlanConfigItem>>("/admin/plan-config");
+}
+
+export function updatePlanConfig(plan: string, config: PlanConfigItem) {
+  return request<{ detail: string }>(`/admin/plan-config/${plan}`, {
+    method: "PUT",
+    body: JSON.stringify(config),
+  });
+}
+
 // --- Modules ---
 
 export function getModules() {

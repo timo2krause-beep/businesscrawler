@@ -1,14 +1,15 @@
-"""Admin Endpoints: User-Übersicht und Stats."""
+"""Admin Endpoints: User-Übersicht, Stats und Plan-Konfiguration."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from api.schemas import AdminUserResponse, StatsResponse
+from api.schemas import AdminUserResponse, PlanConfigItem, StatsResponse
 from auth.dependencies import require_admin
 from core.ai_usage import current_period_start, get_monthly_tokens
 from core.database import get_db
 from core.models import AIUsageLog, ReportHistory, Subscription, User
-from payments.stripe_service import AI_TOKEN_LIMITS
+from core.plan_config import PLANS, get_ai_token_limit, set_config
+from core.plan_config import get_all as get_all_plan_configs
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -26,10 +27,35 @@ def list_users(db: Session = Depends(get_db), _admin: User = Depends(require_adm
             module_count=len(u.modules),
             created_at=u.created_at,
             ai_tokens_used_month=get_monthly_tokens(db, u.id),
-            ai_token_limit=AI_TOKEN_LIMITS.get(u.subscription.plan if u.subscription else "free"),
+            ai_token_limit=get_ai_token_limit(db, u.subscription.plan if u.subscription else "free"),
         )
         for u in users
     ]
+
+
+@router.get("/plan-config", response_model=dict[str, PlanConfigItem])
+def get_plan_config(db: Session = Depends(get_db), _admin: User = Depends(require_admin)):
+    """Effektive Limits pro Plan (DB-Override oder Code-Default)."""
+    return get_all_plan_configs(db)
+
+
+@router.put("/plan-config/{plan}")
+def update_plan_config(
+    plan: str,
+    req: PlanConfigItem,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    if plan not in PLANS:
+        raise HTTPException(status_code=400, detail=f"Unbekannter Plan '{plan}'")
+    if req.module_limit < 0:
+        raise HTTPException(status_code=400, detail="Modul-Limit darf nicht negativ sein")
+    if req.ai_token_limit is not None and req.ai_token_limit < 0:
+        raise HTTPException(status_code=400, detail="Token-Limit darf nicht negativ sein")
+
+    set_config(db, plan, req.module_limit, req.ai_token_limit)
+    db.commit()
+    return {"detail": f"Plan '{plan}' aktualisiert"}
 
 
 @router.get("/stats", response_model=StatsResponse)
