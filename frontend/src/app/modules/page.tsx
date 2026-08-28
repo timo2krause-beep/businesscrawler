@@ -381,7 +381,7 @@ export default function ModulesPage() {
                 ))}
               </div>
             )}
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
                 value={competitorInput.name}
@@ -396,9 +396,9 @@ export default function ModulesPage() {
                 onChange={(e) => setCompetitorInput({ ...competitorInput, url: e.target.value })}
                 onKeyDown={(e) => e.key === "Enter" && handleAddCompetitor()}
                 placeholder="URL (optional)"
-                className={inputClass + " max-w-[200px]"}
+                className={inputClass + " sm:max-w-[200px]"}
               />
-              <button onClick={handleAddCompetitor} disabled={addingCompetitor} className={btnSecondary + " shrink-0"}>
+              <button onClick={handleAddCompetitor} disabled={addingCompetitor} className={btnSecondary + " sm:shrink-0"}>
                 {addingCompetitor ? "..." : "+"}
               </button>
             </div>
@@ -441,7 +441,7 @@ export default function ModulesPage() {
           )}
           <div className="space-y-2">
             <input type="text" value={targetInput.url} onChange={(e) => setTargetInput({ ...targetInput, url: e.target.value })} placeholder="URL (z.B. https://competitor.com/pricing)" className={inputClass} />
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input type="text" value={targetInput.name} onChange={(e) => setTargetInput({ ...targetInput, name: e.target.value })} placeholder="Name" className={inputClass} />
               <input type="text" value={targetInput.selector} onChange={(e) => setTargetInput({ ...targetInput, selector: e.target.value })} placeholder="CSS Selector (main)" className={inputClass} />
             </div>
@@ -491,7 +491,7 @@ export default function ModulesPage() {
               ))}
             </div>
           )}
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               value={feedInput.url}
@@ -506,9 +506,9 @@ export default function ModulesPage() {
               onChange={(e) => setFeedInput({ ...feedInput, name: e.target.value })}
               onKeyDown={(e) => e.key === "Enter" && handleAddFeed()}
               placeholder="Name"
-              className={inputClass + " max-w-[160px]"}
+              className={inputClass + " sm:max-w-[160px]"}
             />
-            <button onClick={handleAddFeed} className={btnSecondary + " shrink-0"}>+</button>
+            <button onClick={handleAddFeed} className={btnSecondary + " sm:shrink-0"}>+</button>
           </div>
           <button onClick={handleSaveFeeds} disabled={savingPref === "rss_feeds"} className={btnPrimary}>
             {savingPref === "rss_feeds" ? "..." : "Speichern"}
@@ -580,7 +580,7 @@ export default function ModulesPage() {
               />
 
               {active && (
-                <div className="mt-2 ml-[52px] space-y-3">
+                <div className="mt-2 ml-0 sm:ml-[52px] space-y-3">
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleRun(mod.name)}

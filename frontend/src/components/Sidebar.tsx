@@ -51,19 +51,85 @@ function Icon({ name, className = "w-[18px] h-[18px]" }: { name: string; classNa
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
       </svg>
     ),
+    menu: (
+      <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+      </svg>
+    ),
+    close: (
+      <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+      </svg>
+    ),
   };
   return icons[name] || null;
+}
+
+function Logo() {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-sm shrink-0">
+        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+        </svg>
+      </div>
+      <span className="font-bold text-[15px] text-[var(--text-primary)] tracking-tight">
+        Scraper
+      </span>
+    </div>
+  );
+}
+
+function NavLinks({
+  navItems,
+  pathname,
+  onNavigate,
+}: {
+  navItems: { href: string; label: string; icon: string }[];
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  return (
+    <nav className="flex-1 px-3 space-y-0.5 mt-1 overflow-y-auto">
+      <div className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-widest px-3 pb-2 pt-1">
+        Navigation
+      </div>
+      {navItems.map((item) => {
+        const active = pathname === item.href;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onNavigate}
+            className={`flex items-center gap-3 px-3 py-[9px] rounded-lg text-[13px] transition-all duration-150 ${
+              active
+                ? "bg-[var(--accent-muted)] text-[var(--accent)] font-semibold"
+                : "text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]"
+            }`}
+          >
+            <Icon name={item.icon} />
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
 }
 
 export default function Sidebar() {
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     getMe()
       .then((me) => setIsAdmin(me.is_admin))
       .catch(() => setIsAdmin(false));
   }, []);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
 
   const navItems = isAdmin
     ? [...NAV, { href: "/admin", label: "Admin", icon: "shield" }]
@@ -75,55 +141,71 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[230px] border-r border-[var(--sidebar-border)] bg-[var(--sidebar-bg)] flex flex-col z-50">
-      {/* Logo */}
-      <div className="px-5 py-5">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-sm">
-            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-            </svg>
-          </div>
-          <span className="font-bold text-[15px] text-[var(--text-primary)] tracking-tight">
-            Scraper
-          </span>
-        </div>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 px-3 space-y-0.5 mt-1">
-        <div className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-widest px-3 pb-2 pt-1">
-          Navigation
-        </div>
-        {navItems.map((item) => {
-          const active = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-3 py-[9px] rounded-lg text-[13px] transition-all duration-150 ${
-                active
-                  ? "bg-[var(--accent-muted)] text-[var(--accent)] font-semibold"
-                  : "text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]"
-              }`}
-            >
-              <Icon name={item.icon} />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Footer */}
-      <div className="px-3 pb-4">
+    <>
+      {/* Mobile top bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 flex items-center justify-between px-4 border-b border-[var(--sidebar-border)] bg-[var(--sidebar-bg)] z-40">
+        <Logo />
         <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-[9px] rounded-lg text-[13px] w-full text-[var(--text-muted)] hover:bg-red-50 hover:text-red-500 transition-all duration-150"
+          onClick={() => setMenuOpen(true)}
+          aria-label="Menü öffnen"
+          className="w-9 h-9 flex items-center justify-center rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors"
         >
-          <Icon name="logout" />
-          Abmelden
+          <Icon name="menu" className="w-5 h-5" />
         </button>
       </div>
-    </aside>
+
+      {/* Mobile drawer backdrop */}
+      <div
+        onClick={() => setMenuOpen(false)}
+        className={`md:hidden fixed inset-0 bg-black/40 z-40 transition-opacity duration-200 ${
+          menuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+      />
+
+      {/* Mobile drawer panel */}
+      <aside
+        className={`md:hidden fixed left-0 top-0 h-screen w-[260px] max-w-[80vw] border-r border-[var(--sidebar-border)] bg-[var(--sidebar-bg)] flex flex-col z-50 transform transition-transform duration-200 ease-out ${
+          menuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="px-5 py-5 flex items-center justify-between">
+          <Logo />
+          <button
+            onClick={() => setMenuOpen(false)}
+            aria-label="Menü schließen"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] transition-colors shrink-0"
+          >
+            <Icon name="close" className="w-4 h-4" />
+          </button>
+        </div>
+        <NavLinks navItems={navItems} pathname={pathname} onNavigate={() => setMenuOpen(false)} />
+        <div className="px-3 pb-6">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-3 py-[9px] rounded-lg text-[13px] w-full text-[var(--text-muted)] hover:bg-red-50 hover:text-red-500 transition-all duration-150"
+          >
+            <Icon name="logout" />
+            Abmelden
+          </button>
+        </div>
+      </aside>
+
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex md:flex-col fixed left-0 top-0 h-screen w-[230px] border-r border-[var(--sidebar-border)] bg-[var(--sidebar-bg)] z-30">
+        <div className="px-5 py-5">
+          <Logo />
+        </div>
+        <NavLinks navItems={navItems} pathname={pathname} />
+        <div className="px-3 pb-4">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-3 py-[9px] rounded-lg text-[13px] w-full text-[var(--text-muted)] hover:bg-red-50 hover:text-red-500 transition-all duration-150"
+          >
+            <Icon name="logout" />
+            Abmelden
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }

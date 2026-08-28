@@ -107,7 +107,7 @@ export default function ModuleCard({ name, active, loading, onToggle }: Props) {
         </button>
       </div>
       {active && (
-        <div className="mt-3 ml-[52px] flex items-center gap-1.5">
+        <div className="mt-3 ml-0 sm:ml-[52px] flex items-center gap-1.5">
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
           <span className="text-[11px] font-medium text-emerald-600">Aktiv</span>
         </div>

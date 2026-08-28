@@ -24,9 +24,9 @@ export default function DashboardShell({
   if (!ready) return null;
 
   return (
-    <div className="flex min-h-screen bg-[var(--bg-primary)]">
+    <div className="min-h-screen bg-[var(--bg-primary)]">
       <Sidebar />
-      <main className="ml-[230px] flex-1 py-8 px-10 max-w-[1100px]">
+      <main className="pt-20 pb-8 px-4 md:ml-[230px] md:pt-8 md:px-10 max-w-[1100px]">
         <div className="animate-fade-in">{children}</div>
       </main>
     </div>
