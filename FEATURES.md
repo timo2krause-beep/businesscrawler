@@ -12,7 +12,7 @@ kein Code, nur zur Übersicht/Nachverfolgung).
   Neuer, strukturierter Empfehlungs-Block mit konkreter Handlung + Begründung + Datenbezug.
   *Bezug: Schritt 1 – von Nico direkt als erste Aufgabe für Timo benannt.*
 
-- [ ] **2. Social-Media-Post-Generator (Folgeprodukt)**
+- [x] **2. Social-Media-Post-Generator (Folgeprodukt)**
   Aus den Konkurrenzdaten automatisch 5–10 fertige Social-Media-Post-Vorlagen generieren
   (Text + Vorschlag für Bildmotiv), direkt kopierbar/downloadbar.
   *Bezug: Schritt 1 – "Folgeprodukt ohne Arbeit für den Kunden".*
