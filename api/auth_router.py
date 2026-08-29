@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from api.schemas import (
+    ChangePasswordRequest,
     LoginRequest,
     RegisterRequest,
     TokenResponse,
@@ -64,4 +65,23 @@ def get_profile(user: User = Depends(get_current_user), db: Session = Depends(ge
         modules=[m.module_name for m in user.modules],
         ai_tokens_used=get_monthly_tokens(db, user.id),
         ai_token_limit=get_ai_token_limit(db, plan),
+        has_password=user.password_hash is not None,
     )
+
+
+@router.put("/me/password")
+def change_password(
+    req: ChangePasswordRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not user.password_hash:
+        raise HTTPException(status_code=400, detail="Für diesen Account ist kein Passwort-Login aktiv")
+    if not verify_password(req.current_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Aktuelles Passwort ist falsch")
+    if len(req.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Neues Passwort muss mindestens 8 Zeichen haben")
+
+    user.password_hash = hash_password(req.new_password)
+    db.commit()
+    return {"detail": "Passwort geändert"}

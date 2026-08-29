@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
-import { getCompany, setCompany, CompanyProfile, getMe, createCheckout, cancelSubscription } from "@/lib/api";
+import { getCompany, setCompany, CompanyProfile, getMe, createCheckout, cancelSubscription, changePassword } from "@/lib/api";
 
 const PLATFORM_CONFIG: Record<string, { label: string; icon: string; color: string; bgColor: string }> = {
   google:         { label: "Google Reviews",    icon: "G",  color: "text-blue-600",    bgColor: "bg-blue-50" },
@@ -65,7 +65,7 @@ const PLANS = [
 const inputClass =
   "w-full px-4 py-3 bg-white border border-[var(--border)] rounded-xl text-[14px] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all";
 
-type Tab = "unternehmen" | "billing";
+type Tab = "unternehmen" | "zugangsdaten" | "billing";
 
 export default function AccountPage() {
   return (
@@ -78,7 +78,10 @@ export default function AccountPage() {
 function AccountContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [tab, setTab] = useState<Tab>(searchParams.get("tab") === "billing" ? "billing" : "unternehmen");
+  const initialTab = searchParams.get("tab");
+  const [tab, setTab] = useState<Tab>(
+    initialTab === "billing" ? "billing" : initialTab === "zugangsdaten" ? "zugangsdaten" : "unternehmen"
+  );
 
   function switchTab(t: Tab) {
     setTab(t);
@@ -99,6 +102,16 @@ function AccountContent() {
   const [aiTokensUsed, setAiTokensUsed] = useState(0);
   const [aiTokenLimit, setAiTokenLimit] = useState<number | null>(null);
 
+  // --- Zugangsdaten ---
+  const [accountEmail, setAccountEmail] = useState("");
+  const [hasPassword, setHasPassword] = useState(true);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwError, setPwError] = useState("");
+  const [pwSuccess, setPwSuccess] = useState("");
+
   // --- Shared feedback ---
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -118,8 +131,37 @@ function AccountContent() {
       setCurrentPlan(me.plan);
       setAiTokensUsed(me.ai_tokens_used);
       setAiTokenLimit(me.ai_token_limit);
+      setAccountEmail(me.email);
+      setHasPassword(me.has_password);
     });
   }, []);
+
+  async function handleChangePassword() {
+    setPwError("");
+    setPwSuccess("");
+
+    if (newPassword.length < 8) {
+      setPwError("Neues Passwort muss mindestens 8 Zeichen haben");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwError("Die Passwörter stimmen nicht überein");
+      return;
+    }
+
+    setPwSaving(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      setPwSuccess("Passwort geändert");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      setPwError(err.message);
+    } finally {
+      setPwSaving(false);
+    }
+  }
 
   async function handleSaveCompany() {
     const name = companyName.trim();
@@ -340,6 +382,124 @@ function AccountContent() {
     );
   }
 
+  function renderZugangsdaten() {
+    return (
+      <div className="space-y-6">
+        <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden card-shadow">
+          <div className="bg-gradient-to-r from-indigo-500 to-purple-500 px-6 py-4">
+            <h2 className="text-white text-[15px] font-bold flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+              </svg>
+              Zugangsdaten
+            </h2>
+          </div>
+          <div className="p-6 space-y-5">
+            <div>
+              <label className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1.5 block">
+                E-Mail-Adresse
+              </label>
+              <input
+                type="email"
+                value={accountEmail}
+                readOnly
+                disabled
+                className={inputClass + " bg-[var(--bg-secondary)] cursor-not-allowed"}
+              />
+            </div>
+
+            {!hasPassword && (
+              <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)]">
+                <svg className="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+                </svg>
+                <p className="text-[12px] text-[var(--text-secondary)]">
+                  Dieser Account meldet sich über Single Sign-On (SSO) an. Es ist kein separates Passwort hinterlegt.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {hasPassword && (
+          <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden card-shadow">
+            <div className="p-6 space-y-5">
+              <div>
+                <h3 className="text-[14px] font-bold text-[var(--text-primary)]">Passwort ändern</h3>
+                <p className="text-[12px] text-[var(--text-muted)] mt-1">
+                  Mindestens 8 Zeichen.
+                </p>
+              </div>
+
+              {pwError && (
+                <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-[12px] px-4 py-3 rounded-xl">
+                  <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                  </svg>
+                  {pwError}
+                </div>
+              )}
+              {pwSuccess && (
+                <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[12px] px-4 py-3 rounded-xl">
+                  <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  {pwSuccess}
+                </div>
+              )}
+
+              <div>
+                <label className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1.5 block">
+                  Aktuelles Passwort
+                </label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1.5 block">
+                    Neues Passwort
+                  </label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="text-[12px] font-semibold text-[var(--text-secondary)] mb-1.5 block">
+                    Neues Passwort bestätigen
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleChangePassword()}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleChangePassword}
+                disabled={pwSaving || !currentPassword || !newPassword || !confirmPassword}
+                className="px-6 py-3 bg-gradient-to-b from-indigo-500 to-indigo-600 text-white rounded-xl text-[13px] font-semibold hover:from-indigo-600 hover:to-indigo-700 shadow-sm transition-all disabled:opacity-50"
+              >
+                {pwSaving ? "Wird geändert..." : "Passwort ändern"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function renderBilling() {
     const pct = aiTokenLimit ? Math.min(100, Math.round((aiTokensUsed / aiTokenLimit) * 100)) : 0;
     const nearLimit = pct >= 80;
@@ -481,6 +641,16 @@ function AccountContent() {
           Unternehmen
         </button>
         <button
+          onClick={() => switchTab("zugangsdaten")}
+          className={`px-4 py-2.5 text-[13px] font-semibold border-b-2 -mb-px transition-colors ${
+            tab === "zugangsdaten"
+              ? "border-indigo-500 text-indigo-600"
+              : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+          }`}
+        >
+          Zugangsdaten
+        </button>
+        <button
           onClick={() => switchTab("billing")}
           className={`px-4 py-2.5 text-[13px] font-semibold border-b-2 -mb-px transition-colors ${
             tab === "billing"
@@ -510,6 +680,7 @@ function AccountContent() {
       )}
 
       {tab === "unternehmen" && renderUnternehmen()}
+      {tab === "zugangsdaten" && renderZugangsdaten()}
       {tab === "billing" && renderBilling()}
     </DashboardShell>
   );

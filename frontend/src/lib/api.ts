@@ -65,7 +65,15 @@ export function getMe() {
     created_at: string;
     ai_tokens_used: number;
     ai_token_limit: number | null;
+    has_password: boolean;
   }>("/me");
+}
+
+export function changePassword(current_password: string, new_password: string) {
+  return request<{ detail: string }>("/me/password", {
+    method: "PUT",
+    body: JSON.stringify({ current_password, new_password }),
+  });
 }
 
 // --- Admin ---

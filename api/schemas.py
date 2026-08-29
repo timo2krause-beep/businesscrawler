@@ -30,8 +30,14 @@ class UserResponse(BaseModel):
     modules: list[str] = []
     ai_tokens_used: int = 0
     ai_token_limit: int | None = None
+    has_password: bool = False
 
     model_config = {"from_attributes": True}
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 
 # --- Subscriptions ---
