@@ -178,6 +178,19 @@ class AIRoutingConfig(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
+class AIPromptVersion(Base):
+    """Versionshistorie für admin-editierbare System-Prompts. Append-only: die Zeile mit
+    der höchsten id pro task_key ist der aktive Prompt. Ohne Zeilen gilt der Code-Default
+    aus dem jeweiligen Modul (core/ai_prompts.py)."""
+    __tablename__ = "ai_prompt_versions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    task_key: Mapped[str] = mapped_column(String(100), index=True)
+    prompt_text: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    created_by: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+
+
 class AIUsageLog(Base):
     """Ein Eintrag pro Modul-Lauf mit KI-Aufrufen – Basis für den monatlichen Token-Deckel."""
     __tablename__ = "ai_usage_log"

@@ -21,19 +21,23 @@ FALLBACK_MODELS = [
 ]
 
 
-def _resolve_provider(task: str | None) -> str:
-    """Lädt die admin-konfigurierte Provider-Wahl für einen Task. Fällt auf 'auto' zurück,
-    wenn kein Task angegeben oder die DB nicht erreichbar ist."""
+def _resolve_task_config(task: str | None, system: str) -> tuple[str, str]:
+    """Lädt die admin-konfigurierte Provider-Wahl und einen evtl. Prompt-Override für einen
+    Task. Fällt auf ('auto', system) zurück, wenn kein Task angegeben oder die DB nicht
+    erreichbar ist."""
     if not task:
-        return "auto"
+        return "auto", system
     try:
+        from core.ai_prompts import get_effective_prompt_or_default
         from core.ai_routing import get_provider
         from core.database import get_session
         with get_session() as db:
-            return get_provider(db, task)
+            provider = get_provider(db, task)
+            effective_system = get_effective_prompt_or_default(db, task, system)
+        return provider, effective_system
     except Exception as e:
-        log.warning("Konnte KI-Routing für Task '%s' nicht laden (%s), nutze 'auto'", task, e)
-        return "auto"
+        log.warning("Konnte KI-Konfiguration für Task '%s' nicht laden (%s), nutze Defaults", task, e)
+        return "auto", system
 
 
 async def ai_chat(
@@ -44,9 +48,9 @@ async def ai_chat(
     max_tokens: int = 2000,
     task: str | None = None,
 ) -> str:
-    """Sendet eine KI-Anfrage. `task` steuert (falls admin-konfiguriert) den Provider,
-    sonst: Google Gemini wenn Key vorhanden, sonst OpenRouter."""
-    provider = _resolve_provider(task)
+    """Sendet eine KI-Anfrage. `task` steuert (falls admin-konfiguriert) den Provider und
+    einen evtl. Prompt-Override, sonst: Google Gemini wenn Key vorhanden, sonst OpenRouter."""
+    provider, system = _resolve_task_config(task, system)
 
     if provider == "gemini":
         if not settings.google_ai_api_key:

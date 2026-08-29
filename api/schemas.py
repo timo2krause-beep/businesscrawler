@@ -135,3 +135,21 @@ class AIRoutingTaskInfo(BaseModel):
 
 class AIRoutingUpdateRequest(BaseModel):
     provider: str
+
+
+class AIPromptInfo(BaseModel):
+    module: str
+    label: str
+    prompt: str
+    is_override: bool
+
+
+class AIPromptUpdateRequest(BaseModel):
+    prompt: str
+
+
+class AIPromptVersionInfo(BaseModel):
+    id: int
+    prompt: str
+    created_at: datetime
+    created_by_email: str | None = None

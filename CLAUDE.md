@@ -59,6 +59,12 @@ can override the provider per prompt via `core/ai_routing.py` (DB-backed, code-d
 the Gemini-then-OpenRouter behavior above). New task keys must be registered in `ai_routing.TASKS`
 to show up in the admin UI.
 
+The `system` prompt text passed at each call site is likewise just the code default — `ai_chat`
+transparently swaps in an admin-edited override (if any) via `core/ai_prompts.py` before sending
+the request. Overrides are versioned (`AIPromptVersion`, append-only; latest row per `task_key` =
+active prompt), so admin edits in the "KI-Konfiguration" tab always have a rollback path via
+history/restore, never a silent overwrite of the working prompt.
+
 ### Web Scraping Change Detection
 `core/sources/web_scraper.py` uses content hashing stored in `content_hashes` table. Diffs computed via `difflib`. Content text cached for diff computation.
 

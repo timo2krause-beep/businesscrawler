@@ -11,10 +11,17 @@ import {
   updatePlanConfig,
   getAIRouting,
   updateAIRouting,
+  getPrompts,
+  updatePrompt,
+  resetPrompt,
+  getPromptHistory,
+  restorePromptVersion,
   AdminUser,
   AdminStats,
   PlanConfigItem,
   AIRoutingTaskInfo,
+  AIPromptInfo,
+  AIPromptVersionInfo,
 } from "@/lib/api";
 
 const PLAN_LABELS: Record<string, string> = {
@@ -85,6 +92,19 @@ function AdminContent() {
   const [savingTask, setSavingTask] = useState<string | null>(null);
   const [savedTask, setSavedTask] = useState<string | null>(null);
 
+  // --- Prompts ---
+  const [prompts, setPrompts] = useState<Record<string, AIPromptInfo>>({});
+  const [promptsLoading, setPromptsLoading] = useState(true);
+  const [promptDrafts, setPromptDrafts] = useState<Record<string, string>>({});
+  const [expandedPrompt, setExpandedPrompt] = useState<string | null>(null);
+  const [savingPrompt, setSavingPrompt] = useState<string | null>(null);
+  const [savedPrompt, setSavedPrompt] = useState<string | null>(null);
+  const [resettingPrompt, setResettingPrompt] = useState<string | null>(null);
+  const [historyOpenTask, setHistoryOpenTask] = useState<string | null>(null);
+  const [historyData, setHistoryData] = useState<Record<string, AIPromptVersionInfo[]>>({});
+  const [historyLoadingTask, setHistoryLoadingTask] = useState<string | null>(null);
+  const [restoringVersionId, setRestoringVersionId] = useState<number | null>(null);
+
   useEffect(() => {
     if (!allowed) return;
     Promise.all([getAdminUsers(), getAdminStats()])
@@ -104,6 +124,11 @@ function AdminContent() {
       .then(setAiRouting)
       .catch(() => {})
       .finally(() => setRoutingLoading(false));
+
+    getPrompts()
+      .then(setPrompts)
+      .catch(() => {})
+      .finally(() => setPromptsLoading(false));
   }, [allowed]);
 
   function updateField(plan: string, field: keyof PlanConfigItem, value: number | null) {
@@ -149,6 +174,93 @@ function AdminContent() {
       alert(err.message);
     } finally {
       setSavingTask(null);
+    }
+  }
+
+  function toggleExpandPrompt(taskKey: string) {
+    if (expandedPrompt === taskKey) {
+      setExpandedPrompt(null);
+      return;
+    }
+    if (promptDrafts[taskKey] === undefined && prompts[taskKey]) {
+      setPromptDrafts((prev) => ({ ...prev, [taskKey]: prompts[taskKey].prompt }));
+    }
+    setExpandedPrompt(taskKey);
+    setHistoryOpenTask(null);
+  }
+
+  async function handleSavePrompt(taskKey: string) {
+    const draft = promptDrafts[taskKey];
+    if (!draft || !draft.trim()) return;
+    setSavingPrompt(taskKey);
+    setSavedPrompt(null);
+    try {
+      await updatePrompt(taskKey, draft);
+      setPrompts((prev) => ({
+        ...prev,
+        [taskKey]: { ...prev[taskKey], prompt: draft, is_override: true },
+      }));
+      setSavedPrompt(taskKey);
+      setTimeout(() => setSavedPrompt(null), 2000);
+      if (historyOpenTask === taskKey) {
+        getPromptHistory(taskKey).then((h) => setHistoryData((prev) => ({ ...prev, [taskKey]: h })));
+      }
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setSavingPrompt(null);
+    }
+  }
+
+  async function handleResetPrompt(taskKey: string) {
+    if (!confirm("Prompt wirklich auf den Standard zurücksetzen?")) return;
+    setResettingPrompt(taskKey);
+    try {
+      const result = await resetPrompt(taskKey);
+      setPrompts((prev) => ({
+        ...prev,
+        [taskKey]: { ...prev[taskKey], prompt: result.prompt, is_override: false },
+      }));
+      setPromptDrafts((prev) => ({ ...prev, [taskKey]: result.prompt }));
+      if (historyOpenTask === taskKey) {
+        getPromptHistory(taskKey).then((h) => setHistoryData((prev) => ({ ...prev, [taskKey]: h })));
+      }
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setResettingPrompt(null);
+    }
+  }
+
+  function toggleHistory(taskKey: string) {
+    if (historyOpenTask === taskKey) {
+      setHistoryOpenTask(null);
+      return;
+    }
+    setHistoryOpenTask(taskKey);
+    if (!historyData[taskKey]) {
+      setHistoryLoadingTask(taskKey);
+      getPromptHistory(taskKey)
+        .then((h) => setHistoryData((prev) => ({ ...prev, [taskKey]: h })))
+        .catch(() => {})
+        .finally(() => setHistoryLoadingTask(null));
+    }
+  }
+
+  async function handleRestoreVersion(taskKey: string, versionId: number) {
+    setRestoringVersionId(versionId);
+    try {
+      const result = await restorePromptVersion(taskKey, versionId);
+      setPrompts((prev) => ({
+        ...prev,
+        [taskKey]: { ...prev[taskKey], prompt: result.prompt, is_override: true },
+      }));
+      setPromptDrafts((prev) => ({ ...prev, [taskKey]: result.prompt }));
+      getPromptHistory(taskKey).then((h) => setHistoryData((prev) => ({ ...prev, [taskKey]: h })));
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setRestoringVersionId(null);
     }
   }
 
@@ -294,7 +406,7 @@ function AdminContent() {
   }
 
   function renderKiRouting() {
-    if (routingLoading) {
+    if (routingLoading || promptsLoading) {
       return (
         <div className="space-y-4">
           <div className="h-40 rounded-2xl animate-shimmer" />
@@ -312,8 +424,9 @@ function AdminContent() {
     return (
       <div className="space-y-6">
         <p className="text-[12px] text-[var(--text-muted)] -mt-2">
-          Steuert pro Prompt, welcher KI-Anbieter genutzt wird. &quot;Automatisch&quot; nutzt Gemini und
-          weicht bei Fehlern auf OpenRouter aus.
+          Steuert pro Prompt den KI-Anbieter (&quot;Automatisch&quot; nutzt Gemini, Fallback OpenRouter) und
+          erlaubt, den System-Prompt selbst zu bearbeiten. Jede Änderung landet in der Versionshistorie
+          und lässt sich jederzeit zurückrollen.
         </p>
         {Object.entries(grouped).map(([module, tasks]) => (
           <div key={module} className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden card-shadow">
@@ -321,31 +434,137 @@ function AdminContent() {
               <h3 className="text-[13px] font-bold text-[var(--text-primary)]">{module}</h3>
             </div>
             <div className="divide-y divide-[var(--border)]">
-              {tasks.map(([taskKey, info]) => (
-                <div key={taskKey} className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-[var(--text-primary)]">{info.label}</p>
+              {tasks.map(([taskKey, info]) => {
+                const promptInfo = prompts[taskKey];
+                const isExpanded = expandedPrompt === taskKey;
+                const isHistoryOpen = historyOpenTask === taskKey;
+                const history = historyData[taskKey] || [];
+
+                return (
+                  <div key={taskKey}>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4">
+                      <div className="flex-1 min-w-0 flex items-center gap-2">
+                        <p className="text-[13px] font-medium text-[var(--text-primary)]">{info.label}</p>
+                        {promptInfo?.is_override && (
+                          <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded shrink-0">
+                            ANGEPASST
+                          </span>
+                        )}
+                      </div>
+                      <select
+                        value={aiRouting[taskKey]?.provider ?? "auto"}
+                        onChange={(e) => updateRoutingField(taskKey, e.target.value)}
+                        className="px-3 py-2 bg-white border border-[var(--border)] rounded-lg text-[13px] text-[var(--text-primary)] focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all sm:w-[280px]"
+                      >
+                        {PROVIDER_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => handleSaveRouting(taskKey)}
+                        disabled={savingTask === taskKey}
+                        className="px-4 py-2 bg-gradient-to-b from-indigo-500 to-indigo-600 text-white rounded-lg text-[12px] font-semibold hover:from-indigo-600 hover:to-indigo-700 shadow-sm transition-all disabled:opacity-50 shrink-0"
+                      >
+                        {savingTask === taskKey ? "..." : savedTask === taskKey ? "Gespeichert ✓" : "Speichern"}
+                      </button>
+                      <button
+                        onClick={() => toggleExpandPrompt(taskKey)}
+                        className={`px-3 py-2 rounded-lg text-[12px] font-medium transition-all shrink-0 ${
+                          isExpanded
+                            ? "bg-indigo-50 text-indigo-600 border border-indigo-200"
+                            : "bg-white border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
+                        }`}
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <svg className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                          </svg>
+                          Prompt
+                        </span>
+                      </button>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="px-5 pb-5 animate-fade-in">
+                        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] p-4 space-y-3">
+                          <textarea
+                            value={promptDrafts[taskKey] ?? ""}
+                            onChange={(e) => setPromptDrafts((prev) => ({ ...prev, [taskKey]: e.target.value }))}
+                            rows={10}
+                            className="w-full px-3 py-2.5 bg-white border border-[var(--border)] rounded-lg text-[12.5px] leading-relaxed text-[var(--text-primary)] font-mono focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-y"
+                          />
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              onClick={() => handleSavePrompt(taskKey)}
+                              disabled={savingPrompt === taskKey || !promptDrafts[taskKey]?.trim()}
+                              className="px-4 py-2 bg-gradient-to-b from-indigo-500 to-indigo-600 text-white rounded-lg text-[12px] font-semibold hover:from-indigo-600 hover:to-indigo-700 shadow-sm transition-all disabled:opacity-50"
+                            >
+                              {savingPrompt === taskKey
+                                ? "Speichere..."
+                                : savedPrompt === taskKey
+                                ? "Gespeichert ✓"
+                                : "Speichern"}
+                            </button>
+                            {promptInfo?.is_override && (
+                              <button
+                                onClick={() => handleResetPrompt(taskKey)}
+                                disabled={resettingPrompt === taskKey}
+                                className="px-4 py-2 bg-white border border-[var(--border)] text-[var(--text-secondary)] rounded-lg text-[12px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all disabled:opacity-50"
+                              >
+                                {resettingPrompt === taskKey ? "..." : "Auf Standard zurücksetzen"}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => toggleHistory(taskKey)}
+                              className="px-4 py-2 bg-white border border-[var(--border)] text-[var(--text-secondary)] rounded-lg text-[12px] font-medium hover:bg-[var(--bg-tertiary)] transition-all"
+                            >
+                              {isHistoryOpen ? "Verlauf ausblenden" : "Verlauf anzeigen"}
+                            </button>
+                          </div>
+
+                          {isHistoryOpen && (
+                            <div className="pt-3 border-t border-[var(--border)] space-y-2">
+                              {historyLoadingTask === taskKey ? (
+                                <div className="h-16 rounded-lg animate-shimmer" />
+                              ) : history.length === 0 ? (
+                                <p className="text-[12px] text-[var(--text-muted)] italic">
+                                  Noch keine früheren Versionen gespeichert.
+                                </p>
+                              ) : (
+                                history.map((v) => (
+                                  <div
+                                    key={v.id}
+                                    className="rounded-lg border border-[var(--border)] bg-white p-3 space-y-2"
+                                  >
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-[11px] text-[var(--text-muted)]">
+                                        {new Date(v.created_at).toLocaleString("de-DE")}
+                                        {v.created_by_email && ` · ${v.created_by_email}`}
+                                      </span>
+                                      <button
+                                        onClick={() => handleRestoreVersion(taskKey, v.id)}
+                                        disabled={restoringVersionId === v.id}
+                                        className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 transition-colors shrink-0 disabled:opacity-50"
+                                      >
+                                        {restoringVersionId === v.id ? "..." : "Wiederherstellen"}
+                                      </button>
+                                    </div>
+                                    <p className="text-[11.5px] text-[var(--text-secondary)] font-mono whitespace-pre-wrap max-h-24 overflow-y-auto">
+                                      {v.prompt}
+                                    </p>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <select
-                    value={aiRouting[taskKey]?.provider ?? "auto"}
-                    onChange={(e) => updateRoutingField(taskKey, e.target.value)}
-                    className="px-3 py-2 bg-white border border-[var(--border)] rounded-lg text-[13px] text-[var(--text-primary)] focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all sm:w-[300px]"
-                  >
-                    {PROVIDER_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={() => handleSaveRouting(taskKey)}
-                    disabled={savingTask === taskKey}
-                    className="px-4 py-2 bg-gradient-to-b from-indigo-500 to-indigo-600 text-white rounded-lg text-[12px] font-semibold hover:from-indigo-600 hover:to-indigo-700 shadow-sm transition-all disabled:opacity-50 shrink-0"
-                  >
-                    {savingTask === taskKey ? "..." : savedTask === taskKey ? "Gespeichert ✓" : "Speichern"}
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}
@@ -399,7 +618,7 @@ function AdminContent() {
               : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
           }`}
         >
-          KI-Routing
+          KI-Konfiguration
         </button>
       </div>
 

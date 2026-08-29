@@ -138,6 +138,47 @@ export function updateAIRouting(taskKey: string, provider: string) {
   });
 }
 
+export interface AIPromptInfo {
+  module: string;
+  label: string;
+  prompt: string;
+  is_override: boolean;
+}
+
+export interface AIPromptVersionInfo {
+  id: number;
+  prompt: string;
+  created_at: string;
+  created_by_email: string | null;
+}
+
+export function getPrompts() {
+  return request<Record<string, AIPromptInfo>>("/admin/prompts");
+}
+
+export function updatePrompt(taskKey: string, prompt: string) {
+  return request<{ detail: string }>(`/admin/prompts/${taskKey}`, {
+    method: "PUT",
+    body: JSON.stringify({ prompt }),
+  });
+}
+
+export function resetPrompt(taskKey: string) {
+  return request<{ detail: string; prompt: string }>(`/admin/prompts/${taskKey}/reset`, {
+    method: "POST",
+  });
+}
+
+export function getPromptHistory(taskKey: string) {
+  return request<AIPromptVersionInfo[]>(`/admin/prompts/${taskKey}/history`);
+}
+
+export function restorePromptVersion(taskKey: string, versionId: number) {
+  return request<{ detail: string; prompt: string }>(`/admin/prompts/${taskKey}/restore/${versionId}`, {
+    method: "POST",
+  });
+}
+
 // --- Modules ---
 
 export function getModules() {
