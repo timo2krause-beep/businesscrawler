@@ -145,7 +145,7 @@ class SocialSentimentMonitor(BaseModule):
         )
 
         try:
-            sentiments = await ai_json(prompt, system=SENTIMENT_SYSTEM_PROMPT)
+            sentiments = await ai_json(prompt, system=SENTIMENT_SYSTEM_PROMPT, task="social_sentiment.sentiment")
             if isinstance(sentiments, list):
                 sentiment_map = {s["index"]: s for s in sentiments if "index" in s}
                 for i, m in enumerate(mentions):
@@ -212,7 +212,7 @@ class SocialSentimentMonitor(BaseModule):
         )
 
         try:
-            return await ai_chat(prompt, system=NEWSLETTER_SYSTEM_PROMPT, max_tokens=3000)
+            return await ai_chat(prompt, system=NEWSLETTER_SYSTEM_PROMPT, max_tokens=3000, task="social_sentiment.newsletter")
         except Exception as e:
             log.warning("Newsletter-Generierung fehlgeschlagen: %s", e)
             return f"Newsletter konnte nicht generiert werden: {e}"

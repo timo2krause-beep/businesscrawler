@@ -3,8 +3,18 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from api.schemas import AdminUserResponse, PlanConfigItem, StatsResponse
+from api.schemas import (
+    AdminUserResponse,
+    AIRoutingTaskInfo,
+    AIRoutingUpdateRequest,
+    PlanConfigItem,
+    StatsResponse,
+)
 from auth.dependencies import require_admin
+from core.ai_routing import PROVIDERS as AI_PROVIDERS
+from core.ai_routing import TASKS as AI_ROUTING_TASKS
+from core.ai_routing import get_all as get_all_ai_routing
+from core.ai_routing import set_provider as set_ai_provider
 from core.ai_usage import current_period_start, get_monthly_tokens
 from core.database import get_db
 from core.models import AIUsageLog, ReportHistory, Subscription, User
@@ -56,6 +66,29 @@ def update_plan_config(
     set_config(db, plan, req.module_limit, req.ai_token_limit)
     db.commit()
     return {"detail": f"Plan '{plan}' aktualisiert"}
+
+
+@router.get("/ai-routing", response_model=dict[str, AIRoutingTaskInfo])
+def get_ai_routing(db: Session = Depends(get_db), _admin: User = Depends(require_admin)):
+    """Aktuelle KI-Provider-Wahl pro Prompt/Task (DB-Override oder Code-Default 'auto')."""
+    return get_all_ai_routing(db)
+
+
+@router.put("/ai-routing/{task_key}")
+def update_ai_routing(
+    task_key: str,
+    req: AIRoutingUpdateRequest,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    if task_key not in AI_ROUTING_TASKS:
+        raise HTTPException(status_code=400, detail=f"Unbekannter Task '{task_key}'")
+    if req.provider not in AI_PROVIDERS:
+        raise HTTPException(status_code=400, detail=f"Unbekannter Provider '{req.provider}'")
+
+    set_ai_provider(db, task_key, req.provider)
+    db.commit()
+    return {"detail": f"Routing für '{task_key}' aktualisiert"}
 
 
 @router.get("/stats", response_model=StatsResponse)

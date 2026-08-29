@@ -21,23 +21,50 @@ FALLBACK_MODELS = [
 ]
 
 
+def _resolve_provider(task: str | None) -> str:
+    """Lädt die admin-konfigurierte Provider-Wahl für einen Task. Fällt auf 'auto' zurück,
+    wenn kein Task angegeben oder die DB nicht erreichbar ist."""
+    if not task:
+        return "auto"
+    try:
+        from core.ai_routing import get_provider
+        from core.database import get_session
+        with get_session() as db:
+            return get_provider(db, task)
+    except Exception as e:
+        log.warning("Konnte KI-Routing für Task '%s' nicht laden (%s), nutze 'auto'", task, e)
+        return "auto"
+
+
 async def ai_chat(
     prompt: str,
     system: str = "",
     model: str | None = None,
     temperature: float = 0.3,
     max_tokens: int = 2000,
+    task: str | None = None,
 ) -> str:
-    """Sendet eine KI-Anfrage. Nutzt Google Gemini wenn Key vorhanden, sonst OpenRouter."""
+    """Sendet eine KI-Anfrage. `task` steuert (falls admin-konfiguriert) den Provider,
+    sonst: Google Gemini wenn Key vorhanden, sonst OpenRouter."""
+    provider = _resolve_provider(task)
 
-    # Google Gemini direkt nutzen wenn API Key vorhanden
+    if provider == "gemini":
+        if not settings.google_ai_api_key:
+            raise RuntimeError("GOOGLE_AI_API_KEY nicht konfiguriert")
+        return await _gemini_chat(prompt, system, temperature, max_tokens)
+
+    if provider == "openrouter":
+        if not settings.openrouter_api_key:
+            raise RuntimeError("OPENROUTER_API_KEY nicht konfiguriert")
+        return await _openrouter_chat(prompt, system, model, temperature, max_tokens)
+
+    # "auto": Google Gemini direkt nutzen wenn API Key vorhanden, sonst OpenRouter
     if settings.google_ai_api_key:
         try:
             return await _gemini_chat(prompt, system, temperature, max_tokens)
         except Exception as e:
             log.warning("Gemini fehlgeschlagen: %s, Fallback auf OpenRouter", e)
 
-    # OpenRouter
     if not settings.openrouter_api_key:
         raise RuntimeError("Kein KI-API-Key konfiguriert (GOOGLE_AI_API_KEY oder OPENROUTER_API_KEY)")
 
@@ -159,9 +186,10 @@ async def ai_json(
     system: str = "",
     model: str | None = None,
     max_tokens: int = 4000,
+    task: str | None = None,
 ) -> dict | list:
     """Wie ai_chat, aber parst die Antwort als JSON."""
-    raw = await ai_chat(prompt, system=system, model=model, max_tokens=max_tokens)
+    raw = await ai_chat(prompt, system=system, model=model, max_tokens=max_tokens, task=task)
 
     # JSON aus Markdown-Codeblock extrahieren falls vorhanden
     cleaned = raw.strip()

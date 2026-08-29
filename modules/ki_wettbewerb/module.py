@@ -136,7 +136,7 @@ class KIWettbewerbMonitor(BaseModule):
             prompt += f"\nUnternehmensgröße: {size_labels.get(self.company_size, self.company_size)}"
         prompt += "\n\nIdentifiziere die 5 wichtigsten direkten Wettbewerber."
 
-        result = await ai_json(prompt, system=COMPETITOR_SYSTEM_PROMPT)
+        result = await ai_json(prompt, system=COMPETITOR_SYSTEM_PROMPT, task="ki_wettbewerb.identify_competitors")
         if not isinstance(result, list):
             log.warning("KI hat kein Array zurückgegeben: %s", type(result))
             return []
@@ -163,7 +163,7 @@ class KIWettbewerbMonitor(BaseModule):
             f"Preismodell: {competitor.get('pricing_model', 'unbekannt')}\n"
         )
         try:
-            return await ai_chat(prompt, system=PROFILE_SYSTEM_PROMPT)
+            return await ai_chat(prompt, system=PROFILE_SYSTEM_PROMPT, task="ki_wettbewerb.build_profile")
         except Exception as e:
             log.warning("Profil-Erstellung fehlgeschlagen für %s: %s", competitor.get("name"), e)
             return ""
@@ -214,7 +214,7 @@ class KIWettbewerbMonitor(BaseModule):
             f"Erkannte Änderungen:\n{diff}"
         )
         try:
-            return await ai_chat(prompt, system=DIFF_SYSTEM_PROMPT)
+            return await ai_chat(prompt, system=DIFF_SYSTEM_PROMPT, task="ki_wettbewerb.diff_analysis")
         except Exception as e:
             log.warning("KI-Zusammenfassung fehlgeschlagen: %s", e)
             return diff
@@ -236,7 +236,7 @@ class KIWettbewerbMonitor(BaseModule):
             lines.extend(recent_changes)
 
         try:
-            result = await ai_json("\n".join(lines), system=RECOMMENDATIONS_SYSTEM_PROMPT)
+            result = await ai_json("\n".join(lines), system=RECOMMENDATIONS_SYSTEM_PROMPT, task="ki_wettbewerb.recommendations")
         except Exception as e:
             log.warning("Handlungsempfehlungen fehlgeschlagen: %s", e)
             return []

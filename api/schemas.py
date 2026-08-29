@@ -125,3 +125,13 @@ class StatsResponse(BaseModel):
 class PlanConfigItem(BaseModel):
     module_limit: int
     ai_token_limit: int | None
+
+
+class AIRoutingTaskInfo(BaseModel):
+    module: str
+    label: str
+    provider: str
+
+
+class AIRoutingUpdateRequest(BaseModel):
+    provider: str

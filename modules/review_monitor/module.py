@@ -144,7 +144,7 @@ class ReviewMonitor(BaseModule):
         )
 
         try:
-            return await ai_chat(prompt, system=REVIEW_ANALYSIS_PROMPT, max_tokens=3000)
+            return await ai_chat(prompt, system=REVIEW_ANALYSIS_PROMPT, max_tokens=3000, task="review_monitor.analysis")
         except Exception as e:
             log.warning("Review-Analyse fehlgeschlagen: %s", e)
             return f"Analyse konnte nicht generiert werden: {e}"

@@ -60,7 +60,7 @@ class SocialMediaGenerator(BaseModule):
             lines.append("")
 
         try:
-            result = await ai_json("\n".join(lines), system=SOCIAL_POSTS_SYSTEM_PROMPT)
+            result = await ai_json("\n".join(lines), system=SOCIAL_POSTS_SYSTEM_PROMPT, task="social_media_generator.posts")
         except Exception as e:
             log.warning("Social-Media-Vorlagen fehlgeschlagen: %s", e)
             return []

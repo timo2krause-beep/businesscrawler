@@ -168,6 +168,16 @@ class PlanConfig(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
+class AIRoutingConfig(Base):
+    """Admin-editierbare KI-Provider-Wahl pro Prompt/Task. Fehlt eine Zeile, gilt
+    der Code-Default 'auto' aus core/ai_routing.py."""
+    __tablename__ = "ai_routing_config"
+
+    task_key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    provider: Mapped[str] = mapped_column(String(20))  # auto | gemini | openrouter
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
 class AIUsageLog(Base):
     """Ein Eintrag pro Modul-Lauf mit KI-Aufrufen – Basis für den monatlichen Token-Deckel."""
     __tablename__ = "ai_usage_log"

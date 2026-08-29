@@ -50,7 +50,14 @@ Key preference keys: `watched_repos`, `cve_keywords`, `rss_feeds`, `scraping_tar
 `NormalizedEvent` with SHA256-based `dedup_key` → `EventEngine` scores + deduplicates → stored in `normalized_events` table.
 
 ### AI Integration (`core/ai_service.py`)
-OpenRouter client with `ai_chat()` and `ai_json()`. Used by ki_wettbewerb, social_sentiment, review_monitor modules.
+`ai_chat()`/`ai_json()` prefer Google Gemini (direct API) and fall back to OpenRouter (with a
+free-model fallback chain) when no Gemini key is set or Gemini fails. Used by ki_wettbewerb,
+social_media_generator, social_sentiment, review_monitor modules.
+
+Each call site passes a stable `task` key (e.g. `"ki_wettbewerb.recommendations"`) so the admin
+can override the provider per prompt via `core/ai_routing.py` (DB-backed, code-default `"auto"` =
+the Gemini-then-OpenRouter behavior above). New task keys must be registered in `ai_routing.TASKS`
+to show up in the admin UI.
 
 ### Web Scraping Change Detection
 `core/sources/web_scraper.py` uses content hashing stored in `content_hashes` table. Diffs computed via `difflib`. Content text cached for diff computation.
@@ -65,7 +72,8 @@ KI-identified competitors cached in `competitor_profiles` table. Only refreshed 
 - **Preference types in frontend**: `pref_type` in `frontend/src/lib/modules.ts` controls UI: undefined=string list, "targets"=url+name+selector editor, "company"=single text input
 - **Schema types for preferences**: `PreferenceSet.value` accepts `dict | list | str | bool` (api/schemas.py)
 - **DB sessions**: Use `get_db()` for FastAPI deps, `get_session()` context manager for standalone code
-- **AI token cap**: `core/ai_usage.py` tracks per-call token usage via a contextvar accumulator, transparent to modules (no changes needed to `ai_chat`/`ai_json` call sites). Wrap a full module run with `with track() as usage: ...` then `save_usage(db, user_id, module_name, usage)` — done in both `api/module_router.py` and `scheduler.py`. Monthly limits per plan live in `payments/stripe_service.py` (`AI_TOKEN_LIMITS`); enforced as a 429 before a module runs.
+- **AI token cap**: `core/ai_usage.py` tracks per-call token usage via a contextvar accumulator, transparent to modules (no changes needed to `ai_chat`/`ai_json` call sites). Wrap a full module run with `with track() as usage: ...` then `save_usage(db, user_id, module_name, usage)` — done in both `api/module_router.py` and `scheduler.py`. Monthly limits and module-count limits per plan are admin-editable, see `core/plan_config.py`; enforced as a 429 before a module runs.
+- **Admin-configurable, DB-override-with-code-default pattern**: `core/plan_config.py` (plan limits) and `core/ai_routing.py` (per-prompt AI provider) both follow the same shape — a small dict of code defaults, a `get_*`/`get_all`/`set_*` API, and a DB table that's only written to when an admin actually changes something. Reuse this pattern for future admin-tunable settings instead of hardcoding.
 
 ## Database
 

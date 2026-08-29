@@ -121,6 +121,23 @@ export function updatePlanConfig(plan: string, config: PlanConfigItem) {
   });
 }
 
+export interface AIRoutingTaskInfo {
+  module: string;
+  label: string;
+  provider: string;
+}
+
+export function getAIRouting() {
+  return request<Record<string, AIRoutingTaskInfo>>("/admin/ai-routing");
+}
+
+export function updateAIRouting(taskKey: string, provider: string) {
+  return request<{ detail: string }>(`/admin/ai-routing/${taskKey}`, {
+    method: "PUT",
+    body: JSON.stringify({ provider }),
+  });
+}
+
 // --- Modules ---
 
 export function getModules() {
